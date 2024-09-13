@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"mentor_tools/services"
+	"MentorTools/services"
 	"net/http"
 
 	"github.com/dgrijalva/jwt-go"

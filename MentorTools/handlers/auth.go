@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"mentor_tools/models"
-	"mentor_tools/services"
+	"MentorTools/models"
+	"MentorTools/services"
 
 	"github.com/jackc/pgx/v4"
 	"golang.org/x/crypto/bcrypt"
