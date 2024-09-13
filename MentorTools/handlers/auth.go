@@ -52,9 +52,9 @@ func LoginHandler(db *pgx.Conn) http.HandlerFunc {
 		}
 
 		var storedPassword string
-		var role string
+		var role, userId string
 
-		err = db.QueryRow(context.Background(), "SELECT password, role FROM users WHERE email=$1", creds.Email).Scan(&storedPassword, &role)
+		err = db.QueryRow(context.Background(), "SELECT id, password, role FROM users WHERE email=$1", creds.Email).Scan(&userId, &storedPassword, &role)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusUnauthorized)
 			return
@@ -65,15 +65,18 @@ func LoginHandler(db *pgx.Conn) http.HandlerFunc {
 			return
 		}
 
+		// Генерация JWT
 		token, err := services.GenerateJWT(creds.Email, role)
 		if err != nil {
 			http.Error(w, "Error generating token", http.StatusInternalServerError)
 			return
 		}
 
+		// Возвращаем токен и ID пользователя
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
-			"token": token,
+			"token":  token,
+			"userId": userId,
 		})
 	}
 }
