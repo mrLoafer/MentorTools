@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -72,6 +73,9 @@ func LoginHandler(db *pgx.Conn) http.HandlerFunc {
 			return
 		}
 
+		// Логирование перед отправкой ответа
+		log.Printf("Response: token=%s, userId=%s\n", token, userId) // Логируем токен и userId для отладки
+
 		// Возвращаем токен и ID пользователя
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
@@ -79,8 +83,4 @@ func LoginHandler(db *pgx.Conn) http.HandlerFunc {
 			"userId": userId,
 		})
 	}
-}
-
-func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Welcome to the protected route!")
 }
