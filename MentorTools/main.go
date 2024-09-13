@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"log"
-	"mentor_tools/db"
-	"mentor_tools/handlers"
-	"mentor_tools/middleware"
 	"net/http"
+
+	"MentorTools/db"
+	"MentorTools/handlers"
+	"MentorTools/middleware"
 )
 
 func main() {
