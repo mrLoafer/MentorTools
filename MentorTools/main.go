@@ -33,6 +33,15 @@ func main() {
 	// Добавляем маршрут для сохранения измененых данных о пользователе
 	router.Handle("/profile", middleware.AuthMiddleware(http.HandlerFunc(handlers.UpdateProfileHandler(conn)))).Methods("PUT")
 
+	// Роут для создания связи между учителем и учеником
+	router.Handle("/link", middleware.AuthMiddleware(http.HandlerFunc(handlers.CreateTeacherStudentLink(conn)))).Methods("POST")
+
+	// Роут для удаления связи
+	router.Handle("/unlink", middleware.AuthMiddleware(http.HandlerFunc(handlers.RemoveTeacherStudentLink(conn)))).Methods("DELETE")
+
+	// Роут для отображения всех связей
+	router.Handle("/links", middleware.AuthMiddleware(http.HandlerFunc(handlers.GetTeacherStudentLinks(conn)))).Methods("GET")
+
 	// Статические файлы
 	fs := http.FileServer(http.Dir("./fe"))
 	router.PathPrefix("/").Handler(fs)

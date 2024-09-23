@@ -105,3 +105,88 @@ func UpdateProfileHandler(conn *pgx.Conn) http.HandlerFunc {
 		json.NewEncoder(w).Encode(map[string]string{"status": "Profile updated successfully"})
 	}
 }
+
+func CreateTeacherStudentLink(conn *pgx.Conn) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var linkData struct {
+			TeacherID int `json:"teacher_id"`
+			StudentID int `json:"student_id"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&linkData); err != nil {
+			http.Error(w, "Invalid input", http.StatusBadRequest)
+			return
+		}
+
+		// Добавляем связь в таблицу
+		_, err := conn.Exec(context.Background(), "INSERT INTO teacher_student (teacher_id, student_id) VALUES ($1, $2)", linkData.TeacherID, linkData.StudentID)
+		if err != nil {
+			http.Error(w, "Failed to create link", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]string{"status": "Link created successfully"})
+	}
+}
+
+func RemoveTeacherStudentLink(conn *pgx.Conn) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var linkData struct {
+			TeacherID int `json:"teacher_id"`
+			StudentID int `json:"student_id"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&linkData); err != nil {
+			http.Error(w, "Invalid input", http.StatusBadRequest)
+			return
+		}
+
+		// Удаляем связь из таблицы
+		_, err := conn.Exec(context.Background(), "DELETE FROM teacher_student WHERE teacher_id=$1 AND student_id=$2", linkData.TeacherID, linkData.StudentID)
+		if err != nil {
+			http.Error(w, "Failed to remove link", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "Link removed successfully"})
+	}
+}
+
+func GetTeacherStudentLinks(conn *pgx.Conn) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := services.GetUserIDFromToken(r) // Извлекаем userID из токена
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Получаем все связи для данного пользователя
+		rows, err := conn.Query(context.Background(), "SELECT teacher_id, student_id FROM teacher_student WHERE teacher_id=$1 OR student_id=$1", userID)
+		if err != nil {
+			http.Error(w, "Failed to fetch links", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		var links []struct {
+			TeacherID int `json:"teacher_id"`
+			StudentID int `json:"student_id"`
+		}
+
+		for rows.Next() {
+			var link struct {
+				TeacherID int `json:"teacher_id"`
+				StudentID int `json:"student_id"`
+			}
+			if err := rows.Scan(&link.TeacherID, &link.StudentID); err != nil {
+				http.Error(w, "Error reading data", http.StatusInternalServerError)
+				return
+			}
+			links = append(links, link)
+		}
+
+		json.NewEncoder(w).Encode(links)
+	}
+}
