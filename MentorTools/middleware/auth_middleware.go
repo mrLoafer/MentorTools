@@ -10,21 +10,24 @@ import (
 
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Получаем токен из заголовка Authorization
-		tokenStr := r.Header.Get("Authorization")
-		if tokenStr == "" || !strings.HasPrefix(tokenStr, "Bearer ") {
-			http.Error(w, "Missing or invalid token format", http.StatusUnauthorized)
+		// Извлекаем токен из заголовка Authorization
+		tokenString := r.Header.Get("Authorization")
+		if tokenString == "" {
+			http.Error(w, "Missing token", http.StatusUnauthorized)
 			return
 		}
 
-		// Извлекаем токен после "Bearer "
-		tokenStr = tokenStr[7:]
+		// Проверяем, что токен начинается с "Bearer "
+		if !strings.HasPrefix(tokenString, "Bearer ") {
+			http.Error(w, "Invalid token format", http.StatusUnauthorized)
+			return
+		}
 
-		// Структура claims для работы с токеном
-		claims := &services.Claims{}
+		// Убираем "Bearer " из строки токена
+		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 
-		// Проверка токена с использованием ключа JwtKey
-		token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		// Парсим токен и проверяем подпись
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			return []byte(services.JwtKey), nil
 		})
 
@@ -33,7 +36,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Переходим к следующему обработчику
+		// Если токен валиден, передаём управление следующему обработчику
 		next.ServeHTTP(w, r)
 	})
 }

@@ -7,7 +7,7 @@ import (
 
 	"MentorTools/db"
 	"MentorTools/handlers"
-	"MentorTools/users"
+	"MentorTools/middleware"
 
 	"github.com/gorilla/mux"
 )
@@ -24,14 +24,18 @@ func main() {
 	router.HandleFunc("/login", handlers.LoginHandler(conn)).Methods("POST")
 	router.HandleFunc("/register", handlers.RegisterHandler(conn)).Methods("POST")
 
-	// Маршруты для управления пользователями
-	router.HandleFunc("/users/{id}", users.GetUserHandler(conn)).Methods("GET")
-	router.HandleFunc("/users/{id}", users.UpdateUserHandler(conn)).Methods("PUT")
-	router.HandleFunc("/users", users.ListUsersHandler(conn)).Methods("GET")
+	// Защищённые маршруты - только для авторизованных пользователей
+	router.Handle("/profile", middleware.AuthMiddleware(http.HandlerFunc(handlers.ProfileHandler(conn)))).Methods("GET")
 
-	// Раздача статических файлов (HTML, CSS, JS) из папки "fe"
+	// Добавляем маршрут для поиска пользователей в зависимости от роли
+	router.Handle("/search", middleware.AuthMiddleware(http.HandlerFunc(handlers.SearchUsersHandler(conn)))).Methods("GET")
+
+	// Добавляем маршрут для сохранения измененых данных о пользователе
+	router.Handle("/profile", middleware.AuthMiddleware(http.HandlerFunc(handlers.UpdateProfileHandler(conn)))).Methods("PUT")
+
+	// Статические файлы
 	fs := http.FileServer(http.Dir("./fe"))
-	router.PathPrefix("/").Handler(fs) // Все запросы по корневому URL направляются в папку fe
+	router.PathPrefix("/").Handler(fs)
 
 	// Запуск сервера
 	log.Println("Server starting on :8080...")

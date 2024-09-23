@@ -67,7 +67,7 @@ func LoginHandler(db *pgx.Conn) http.HandlerFunc {
 		}
 
 		// Генерация JWT
-		token, err := services.GenerateJWT(creds.Email, role)
+		token, err := services.GenerateJWT(userId, creds.Email, role)
 		if err != nil {
 			http.Error(w, "Error generating token", http.StatusInternalServerError)
 			return

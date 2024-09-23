@@ -28,44 +28,36 @@
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
-document.getElementById('loginForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
 
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    console.log('check console log'); // Проверяем ответ сервера перед парсингом
+        console.log('Form submitted');  // Логируем отправку формы
 
-    fetch('http://localhost:8080/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-    })
-    .then(response => {
-        console.log('Response object:', response); // Проверяем ответ сервера перед парсингом
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.token) {
-            localStorage.setItem('token', data.token);
-            console.log('Token saved:', localStorage.getItem('token')); // Проверяем сохранение
-            localStorage.setItem('userId', data.userId);
-            console.log('UserId saved:', localStorage.getItem('userId')); // Проверяем сохранение
-            window.location.href = 'dashboard.html';
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        console.log('Email:', email);  // Логируем введённый email
+        console.log('Password:', password);  // Логируем введённый пароль
+
+        fetch('http://localhost:8080/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.token) {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('userId', data.userId);
+                document.getElementById('login-response').textContent = 'Login successful!';
+                window.location.href = 'dashboard.html';  // Перенаправляем на другую страницу
             } else {
-            document.getElementById('login-response').textContent = 'Login failed!';
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        document.getElementById('login-response').textContent = `Login failed: ${error.message}`;
+                document.getElementById('login-response').textContent = 'Login failed!';
+            }
+        })
+        .catch(error => console.error('Error:', error));
     });
-});
 </script>
-
 </body>
 </html>
