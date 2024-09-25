@@ -42,6 +42,15 @@ func main() {
 	// Роут для отображения всех связей
 	router.Handle("/links", middleware.AuthMiddleware(http.HandlerFunc(handlers.GetTeacherStudentLinks(conn)))).Methods("GET")
 
+	//Роуты для работы с словарем
+	router.Handle("/get-words", middleware.AuthMiddleware(http.HandlerFunc(handlers.GetWordsHandler(conn)))).Methods("GET")
+	router.Handle("/add-word", middleware.AuthMiddleware(http.HandlerFunc(handlers.AddWordHandler(conn)))).Methods("POST")
+	router.Handle("/update-word-status", middleware.AuthMiddleware(http.HandlerFunc(handlers.UpdateWordStatusHandler(conn)))).Methods("POST")
+	router.Handle("/get-word-details", middleware.AuthMiddleware(http.HandlerFunc(handlers.GetWordDetailsHandler(conn)))).Methods("GET")
+
+	// Маршрут для получения роли пользователя
+	router.Handle("/get-user-role", middleware.AuthMiddleware(http.HandlerFunc(handlers.GetUserRoleHandler()))).Methods("GET")
+
 	// Статические файлы
 	fs := http.FileServer(http.Dir("./fe"))
 	router.PathPrefix("/").Handler(fs)

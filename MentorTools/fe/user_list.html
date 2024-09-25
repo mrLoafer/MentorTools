@@ -18,13 +18,12 @@
 <script>
 // Функция для загрузки списка пользователей
 function loadUsers() {
-    // Получаем токен из localStorage
     const token = localStorage.getItem('token');
 
     fetch('http://localhost:8080/search', {
         method: 'GET',
         headers: {
-            'Authorization': 'Bearer ' + token  // Передаем токен
+            'Authorization': 'Bearer ' + token
         }
     })
     .then(response => {
@@ -34,25 +33,61 @@ function loadUsers() {
         return response.json();
     })
     .then(users => {
-        const userList = document.getElementById('userList');
-        userList.innerHTML = '';  // Очищаем список перед добавлением пользователей
-        users.forEach(user => {
-            const listItem = document.createElement('li');
-            listItem.className = 'list-group-item';
-            listItem.textContent = user.name + ' (' + user.email + ')';
-            
-            // Кнопка для установления связи
-            const linkButton = document.createElement('button');
-            linkButton.textContent = 'Link';
-            linkButton.className = 'btn btn-primary ms-3';
-            linkButton.onclick = () => createLink(user.id);
-            listItem.appendChild(linkButton);
-
-            userList.appendChild(listItem);
-        });
+        // После загрузки пользователей загружаем связи
+        loadLinks(users);
     })
     .catch(error => {
         console.error('Error:', error);
+    });
+}
+
+// Функция для загрузки существующих связей
+function loadLinks(users) {
+    const token = localStorage.getItem('token');
+
+    fetch('http://localhost:8080/links', {
+        method: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to load links');
+        }
+        return response.json();
+    })
+    .then(links => {
+        displayUsersWithLinks(users, links);  // Отображаем пользователей с учётом связей
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+function displayUsersWithLinks(users) {
+    const userList = document.getElementById('userList');
+    userList.innerHTML = '';  // Очищаем список
+
+    users.forEach(user => {
+        const listItem = document.createElement('li');
+        listItem.className = 'list-group-item';
+        listItem.textContent = user.name + ' (' + user.email + ')';
+
+        // Кнопка для установления или разрыва связи
+        const linkButton = document.createElement('button');
+        if (user.is_linked) {
+            linkButton.textContent = 'Unlink';  // Если связь есть, показываем "Unlink"
+            linkButton.className = 'btn btn-danger ms-3';
+            linkButton.onclick = () => removeLink(user.id);  // Добавляем функцию для разрыва связи
+        } else {
+            linkButton.textContent = 'Link';
+            linkButton.className = 'btn btn-primary ms-3';
+            linkButton.onclick = () => createLink(user.id);  // Функция для создания связи
+        }
+
+        listItem.appendChild(linkButton);
+        userList.appendChild(listItem);
     });
 }
 
@@ -77,6 +112,35 @@ function createLink(studentId) {
     })
     .then(data => {
         alert(data.status);
+        loadUsers();  // Перезагружаем список пользователей после создания связи
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+// Функция для разрыва связи
+function removeLink(studentId) {
+    const token = localStorage.getItem('token');
+    const teacherId = localStorage.getItem('userId');  // Учитель
+
+    fetch('http://localhost:8080/unlink', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ teacher_id: teacherId, student_id: studentId })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to remove link');
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(data.status);
+        loadUsers();  // Перезагружаем список пользователей после удаления связи
     })
     .catch(error => {
         console.error('Error:', error);

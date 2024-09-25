@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocabulary List</title>
+    <script>
+        // Функция для изменения статуса слова
+        function changeStatus(wordId, newStatus) {
+            fetch(`/update-word-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ wordId: wordId, status: newStatus }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById(`status-${wordId}`).textContent = newStatus;
+                }
+            });
+        }
+        
+        // Загрузка списка слов ученика
+        window.onload = function() {
+            fetch('/get-words')
+            .then(response => response.json())
+            .then(data => {
+                const wordList = document.getElementById('word-list');
+                data.words.forEach(word => {
+                    const wordElement = document.createElement('li');
+                    wordElement.innerHTML = `${word.word} - 
+                        <span id="status-${word.id}">${word.status}</span> 
+                        <button onclick="changeStatus(${word.id}, 'learned')">Выучено</button>
+                        <button onclick="changeStatus(${word.id}, 'need to learn')">Нужно выучить</button>`;
+                    wordList.appendChild(wordElement);
+                });
+            });
+        };
+    </script>
+</head>
+<body>
+    <h1>My Vocabulary</h1>
+    <ul id="word-list">
+        <!-- Слова будут загружены сюда -->
+    </ul>
+</body>
+</html>

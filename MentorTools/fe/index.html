@@ -149,5 +149,30 @@
             .catch(error => console.error('Error:', error));
         });
     </script>
+
+<script>
+    // Проверка роли пользователя
+    window.onload = function() {
+        const token = localStorage.getItem('token');
+        if (token) {
+            fetch('/get-user-role', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.role === 'student') {
+                    document.getElementById('student-vocab-btn').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching user role:', error);
+            });
+        }
+    };
+</script>
+
 </body>
 </html>

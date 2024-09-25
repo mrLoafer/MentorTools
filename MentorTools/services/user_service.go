@@ -8,7 +8,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-// Пример извлечения роли пользователя из JWT токена
+// Извлечение роли пользователя из JWT токена
 func GetUserRoleFromToken(r *http.Request) (string, error) {
 	// Извлекаем токен из заголовка Authorization
 	tokenString := r.Header.Get("Authorization")
