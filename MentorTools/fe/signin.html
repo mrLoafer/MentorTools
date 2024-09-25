@@ -37,9 +37,6 @@
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
 
-        console.log('Email:', email);  // Логируем введённый email
-        console.log('Password:', password);  // Логируем введённый пароль
-
         fetch('http://localhost:8080/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -48,10 +45,29 @@
         .then(response => response.json())
         .then(data => {
             if (data.token) {
+                // Сохраняем токен в localStorage
                 localStorage.setItem('token', data.token);
-                localStorage.setItem('userId', data.userId);
                 document.getElementById('login-response').textContent = 'Login successful!';
-                window.location.href = 'dashboard.html';  // Перенаправляем на другую страницу
+
+                // Запрашиваем роль пользователя
+                fetch('http://localhost:8080/get-user-role', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${data.token}`
+                    }
+                })
+                .then(response => response.json())
+                .then(roleData => {
+                    // Сохраняем роль в sessionStorage
+                    sessionStorage.setItem('role', roleData.role);
+                    console.log('User role:', roleData.role);
+
+                    // Перенаправляем на другую страницу после успешного логина и получения роли
+                    window.location.href = 'dashboard.html';
+                })
+                .catch(error => {
+                    console.error('Error fetching user role:', error);
+                });
             } else {
                 document.getElementById('login-response').textContent = 'Login failed!';
             }

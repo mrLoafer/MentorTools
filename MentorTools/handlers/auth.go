@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -72,9 +71,6 @@ func LoginHandler(db *pgx.Conn) http.HandlerFunc {
 			http.Error(w, "Error generating token", http.StatusInternalServerError)
 			return
 		}
-
-		// Логирование перед отправкой ответа
-		log.Printf("Response: token=%s, userId=%s\n", token, userId) // Логируем токен и userId для отладки
 
 		// Возвращаем токен и ID пользователя
 		w.Header().Set("Content-Type", "application/json")
