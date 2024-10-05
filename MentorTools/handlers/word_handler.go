@@ -55,13 +55,12 @@ func GetWordsHandler(db *pgx.Conn) http.HandlerFunc {
 	}
 }
 
-// AddWordHandler - обработчик для добавления нового слова
+// AddWordHandler - обработчик для добавления нового слова с использованием GPT
+// Обработчик для добавления нового слова
 func AddWordHandler(db *pgx.Conn) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var newWord struct {
-			Word          string `json:"word"`
-			Transcription string `json:"transcription"`
-			Definition    string `json:"definition"`
+			Word string `json:"word"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&newWord); err != nil {
@@ -69,57 +68,55 @@ func AddWordHandler(db *pgx.Conn) http.HandlerFunc {
 			return
 		}
 
-		// Очистка лишних пробелов и перевод слова в нижний регистр для проверки уникальности
 		trimmedWord := strings.ToLower(strings.TrimSpace(newWord.Word))
 
-		// Проверяем наличие слова в базе данных
 		var wordID int
-		err := db.QueryRow(context.Background(), `
-			SELECT id FROM words WHERE LOWER(TRIM(word)) = $1`, trimmedWord).Scan(&wordID)
+		err := db.QueryRow(context.Background(), "SELECT id FROM words WHERE LOWER(TRIM(word)) = $1", trimmedWord).Scan(&wordID)
 
-		if err == pgx.ErrNoRows {
-			// Если слово не найдено, создаем новое слово
+		if err == pxgx.ErrNoRows {
+			// Если слово не найдено, получаем данные от GPT
+			transcription, description, examples, err := services.GetWordDetailsFromGPT(trimmedWord)
+			if err != nil {
+				http.Error(w, "Failed to fetch word details from GPT", http.StatusInternalServerError)
+				return
+			}
+
+			// Сохранение нового слова в БД
 			err = db.QueryRow(context.Background(), `
 				INSERT INTO words (word, transcription, definition)
-				VALUES ($1, $2, $3) RETURNING id`, trimmedWord, newWord.Transcription, newWord.Definition).Scan(&wordID)
+				VALUES ($1, $2, $3) RETURNING id`, trimmedWord, transcription, description).Scan(&wordID)
 
 			if err != nil {
 				http.Error(w, "Failed to add word", http.StatusInternalServerError)
 				return
 			}
-		} else if err != nil {
-			http.Error(w, "Failed to check word", http.StatusInternalServerError)
-			return
+
+			// Сохранение примеров
+			_, err = db.Exec(context.Background(), `
+				INSERT INTO examples (word_id, example)
+				VALUES ($1, $2)`, wordID, examples)
+
+			if err != nil {
+				http.Error(w, "Failed to save examples", http.StatusInternalServerError)
+				return
+			}
 		}
 
-		// Получение ID ученика из токена (должен быть реализован метод для извлечения ID)
 		userID, err := services.GetUserIDFromToken(r)
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		// Проверяем, есть ли уже связь между учеником и словом
-		var existingLink int
-		err = db.QueryRow(context.Background(), `
-			SELECT 1 FROM student_words WHERE student_id = $1 AND word_id = $2`, userID, wordID).Scan(&existingLink)
+		_, err = db.Exec(context.Background(), `
+			INSERT INTO student_words (student_id, word_id, status)
+			VALUES ($1, $2, 'need to learn')`, userID, wordID)
 
-		if err == pgx.ErrNoRows {
-			// Если связи нет, создаем новую связь между учеником и словом
-			_, err = db.Exec(context.Background(), `
-				INSERT INTO student_words (student_id, word_id, status)
-				VALUES ($1, $2, 'need to learn')`, userID, wordID)
-
-			if err != nil {
-				http.Error(w, "Failed to link word to student", http.StatusInternalServerError)
-				return
-			}
-		} else if err != nil {
-			http.Error(w, "Failed to check student-word link", http.StatusInternalServerError)
+		if err != nil {
+			http.Error(w, "Failed to link word to student", http.StatusInternalServerError)
 			return
 		}
 
-		// Возвращаем успешный ответ
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]bool{"success": true})
 	}
