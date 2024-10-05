@@ -18,9 +18,7 @@
 
         <button class="btn btn-primary w-100 mb-3" onclick="openUserList()">View User List</button>
         <button class="btn btn-secondary w-100 mb-3" onclick="openEditProfile()">Edit My Profile</button>
-    </div>
-    <div id="student-vocab-btn" style="display: none;">
-        <button onclick="window.location.href='/all-words'">My Vocabulary</button>
+        <button class="btn btn-success w-100 mb-3" id="student-vocab-btn" style="display: none;" onclick="openVocabulary()">My Vocabulary</button>
     </div>
 </div>
 
@@ -42,6 +40,19 @@
         }
         window.location.href = `edit_profile.html?id=${userId}`; // Перенаправление на форму редактирования профиля
     }
+
+    // Функция для открытия словаря
+    function openVocabulary() {
+        window.location.href = '/all_words.html';  // Перенаправление на страницу словаря ученика
+    }
+
+    // Проверка роли пользователя и отображение кнопки для словаря, если пользователь - ученик
+    window.onload = function() {
+        const role = sessionStorage.getItem('role');
+        if (role === 'student') {
+            document.getElementById('student-vocab-btn').style.display = 'block';
+        }
+    };
 </script>
 
 </body>

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"MentorTools/services"
 
@@ -68,16 +69,57 @@ func AddWordHandler(db *pgx.Conn) http.HandlerFunc {
 			return
 		}
 
-		// Добавление слова в таблицу words
-		_, err := db.Exec(context.Background(), `
-            INSERT INTO words (word, transcription, definition)
-            VALUES ($1, $2, $3)`, newWord.Word, newWord.Transcription, newWord.Definition)
+		// Очистка лишних пробелов и перевод слова в нижний регистр для проверки уникальности
+		trimmedWord := strings.ToLower(strings.TrimSpace(newWord.Word))
 
-		if err != nil {
-			http.Error(w, "Failed to add word", http.StatusInternalServerError)
+		// Проверяем наличие слова в базе данных
+		var wordID int
+		err := db.QueryRow(context.Background(), `
+			SELECT id FROM words WHERE LOWER(TRIM(word)) = $1`, trimmedWord).Scan(&wordID)
+
+		if err == pgx.ErrNoRows {
+			// Если слово не найдено, создаем новое слово
+			err = db.QueryRow(context.Background(), `
+				INSERT INTO words (word, transcription, definition)
+				VALUES ($1, $2, $3) RETURNING id`, trimmedWord, newWord.Transcription, newWord.Definition).Scan(&wordID)
+
+			if err != nil {
+				http.Error(w, "Failed to add word", http.StatusInternalServerError)
+				return
+			}
+		} else if err != nil {
+			http.Error(w, "Failed to check word", http.StatusInternalServerError)
 			return
 		}
 
+		// Получение ID ученика из токена (должен быть реализован метод для извлечения ID)
+		userID, err := services.GetUserIDFromToken(r)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Проверяем, есть ли уже связь между учеником и словом
+		var existingLink int
+		err = db.QueryRow(context.Background(), `
+			SELECT 1 FROM student_words WHERE student_id = $1 AND word_id = $2`, userID, wordID).Scan(&existingLink)
+
+		if err == pgx.ErrNoRows {
+			// Если связи нет, создаем новую связь между учеником и словом
+			_, err = db.Exec(context.Background(), `
+				INSERT INTO student_words (student_id, word_id, status)
+				VALUES ($1, $2, 'need to learn')`, userID, wordID)
+
+			if err != nil {
+				http.Error(w, "Failed to link word to student", http.StatusInternalServerError)
+				return
+			}
+		} else if err != nil {
+			http.Error(w, "Failed to check student-word link", http.StatusInternalServerError)
+			return
+		}
+
+		// Возвращаем успешный ответ
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]bool{"success": true})
 	}
