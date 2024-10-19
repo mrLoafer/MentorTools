@@ -5,48 +5,51 @@ import (
 	"log"
 	"net/http"
 
-	"MentorTools/db"
 	"MentorTools/handlers"
 	"MentorTools/middleware"
 
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 func main() {
-	// Подключение к базе данных
-	conn := db.ConnectDB()
-	defer conn.Close(context.Background())
+	// Подключаемся к базе данных через пул соединений
+	dbpool, err := pgxpool.Connect(context.Background(), "postgresql://loafer:Tesla846@localhost:5432/mentor_tools")
+	if err != nil {
+		log.Fatalf("Unable to connect to database: %v\n", err)
+	}
+	defer dbpool.Close()
 
 	// Создание роутера
 	router := mux.NewRouter()
 
 	// Маршруты для авторизации и регистрации
-	router.HandleFunc("/login", handlers.LoginHandler(conn)).Methods("POST")
-	router.HandleFunc("/register", handlers.RegisterHandler(conn)).Methods("POST")
+	router.HandleFunc("/login", handlers.LoginHandler(dbpool)).Methods("POST")
+	router.HandleFunc("/register", handlers.RegisterHandler(dbpool)).Methods("POST")
 
 	// Защищённые маршруты - только для авторизованных пользователей
-	router.Handle("/profile", middleware.AuthMiddleware(http.HandlerFunc(handlers.ProfileHandler(conn)))).Methods("GET")
+	router.Handle("/profile", middleware.AuthMiddleware(http.HandlerFunc(handlers.ProfileHandler(dbpool)))).Methods("GET")
 
 	// Добавляем маршрут для поиска пользователей в зависимости от роли
-	router.Handle("/search", middleware.AuthMiddleware(http.HandlerFunc(handlers.SearchUsersHandler(conn)))).Methods("GET")
+	router.Handle("/search", middleware.AuthMiddleware(http.HandlerFunc(handlers.SearchUsersHandler(dbpool)))).Methods("GET")
 
 	// Добавляем маршрут для сохранения измененых данных о пользователе
-	router.Handle("/profile", middleware.AuthMiddleware(http.HandlerFunc(handlers.UpdateProfileHandler(conn)))).Methods("PUT")
+	router.Handle("/profile", middleware.AuthMiddleware(http.HandlerFunc(handlers.UpdateProfileHandler(dbpool)))).Methods("PUT")
 
 	// Роут для создания связи между учителем и учеником
-	router.Handle("/link", middleware.AuthMiddleware(http.HandlerFunc(handlers.CreateTeacherStudentLink(conn)))).Methods("POST")
+	router.Handle("/link", middleware.AuthMiddleware(http.HandlerFunc(handlers.CreateTeacherStudentLink(dbpool)))).Methods("POST")
 
 	// Роут для удаления связи
-	router.Handle("/unlink", middleware.AuthMiddleware(http.HandlerFunc(handlers.RemoveTeacherStudentLink(conn)))).Methods("DELETE")
+	router.Handle("/unlink", middleware.AuthMiddleware(http.HandlerFunc(handlers.RemoveTeacherStudentLink(dbpool)))).Methods("DELETE")
 
 	// Роут для отображения всех связей
-	router.Handle("/links", middleware.AuthMiddleware(http.HandlerFunc(handlers.GetTeacherStudentLinks(conn)))).Methods("GET")
+	router.Handle("/links", middleware.AuthMiddleware(http.HandlerFunc(handlers.GetTeacherStudentLinks(dbpool)))).Methods("GET")
 
 	//Роуты для работы с словарем
-	router.Handle("/get-words", middleware.AuthMiddleware(http.HandlerFunc(handlers.GetWordsHandler(conn)))).Methods("GET")
-	router.Handle("/add-word", middleware.AuthMiddleware(http.HandlerFunc(handlers.AddWordHandler(conn)))).Methods("POST")
-	router.Handle("/update-word-status", middleware.AuthMiddleware(http.HandlerFunc(handlers.UpdateWordStatusHandler(conn)))).Methods("POST")
-	router.Handle("/get-word-details", middleware.AuthMiddleware(http.HandlerFunc(handlers.GetWordDetailsHandler(conn)))).Methods("GET")
+	router.Handle("/get-words", middleware.AuthMiddleware(http.HandlerFunc(handlers.GetWordsHandler(dbpool)))).Methods("GET")
+	router.Handle("/add-word", middleware.AuthMiddleware(http.HandlerFunc(handlers.AddWordHandler(dbpool)))).Methods("POST")
+	router.Handle("/update-word-status", middleware.AuthMiddleware(http.HandlerFunc(handlers.UpdateWordStatusHandler(dbpool)))).Methods("POST")
+	router.Handle("/get-word-details", middleware.AuthMiddleware(http.HandlerFunc(handlers.GetWordDetailsHandler(dbpool)))).Methods("GET")
 
 	// Маршрут для получения роли пользователя
 	router.Handle("/get-user-role", middleware.AuthMiddleware(http.HandlerFunc(handlers.GetUserRoleHandler()))).Methods("GET")

@@ -10,11 +10,11 @@ import (
 	"MentorTools/models"
 	"MentorTools/services"
 
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func RegisterHandler(db *pgx.Conn) http.HandlerFunc {
+func RegisterHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var user models.User
 		err := json.NewDecoder(r.Body).Decode(&user)
@@ -31,7 +31,7 @@ func RegisterHandler(db *pgx.Conn) http.HandlerFunc {
 
 		query := `INSERT INTO users (email, password, name, role, created_at, updated_at) 
                   VALUES ($1, $2, $3, $4, $5, $6)`
-		_, err = db.Exec(context.Background(), query, user.Email, string(hashedPassword), user.Name, user.Role, time.Now(), time.Now())
+		_, err = dbpool.Exec(context.Background(), query, user.Email, string(hashedPassword), user.Name, user.Role, time.Now(), time.Now())
 		if err != nil {
 			http.Error(w, "Error saving user", http.StatusInternalServerError)
 			return
@@ -42,7 +42,7 @@ func RegisterHandler(db *pgx.Conn) http.HandlerFunc {
 	}
 }
 
-func LoginHandler(db *pgx.Conn) http.HandlerFunc {
+func LoginHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var creds models.Credentials
 		err := json.NewDecoder(r.Body).Decode(&creds)
@@ -54,7 +54,7 @@ func LoginHandler(db *pgx.Conn) http.HandlerFunc {
 		var storedPassword string
 		var role, userId string
 
-		err = db.QueryRow(context.Background(), "SELECT id, password, role FROM users WHERE email=$1", creds.Email).Scan(&userId, &storedPassword, &role)
+		err = dbpool.QueryRow(context.Background(), "SELECT id, password, role FROM users WHERE email=$1", creds.Email).Scan(&userId, &storedPassword, &role)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusUnauthorized)
 			return

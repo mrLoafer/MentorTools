@@ -6,116 +6,135 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 )
 
-// Структуры для работы с OpenAI API
+// Определение структуры запроса к OpenAI
 type OpenAIRequest struct {
 	Model    string    `json:"model"`
 	Messages []Message `json:"messages"`
 }
 
+// Message представляет отдельное сообщение в чате с OpenAI
 type Message struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
+// OpenAIResponse представляет ответ от OpenAI
 type OpenAIResponse struct {
-	Choices []struct {
-		Message Message `json:"message"`
-	} `json:"choices"`
+	Choices []Choice `json:"choices"`
 }
 
+// Choice представляет выбор в ответе от OpenAI
+type Choice struct {
+	Message Message `json:"message"`
+}
+
+// WordDetails структура для транскрипции, перевода, примеров и описания
+type WordDetails struct {
+	Transcription string    `json:"Transcription"`
+	Translation   string    `json:"Translation"`
+	Description   string    `json:"Description"`
+	Synonyms      []string  `json:"Synonyms"`
+	Examples      []Example `json:"Examples"`
+}
+
+// Example представляет пример использования слова
+type Example struct {
+	Text        string   `json:"sentence"`
+	Keywords    []string `json:"keywords"`
+	Translation string   `json:"translation"`
+	Context     string   `json:"area"`
+}
+
+// Единственное сообщение-инструкция, которое будет храниться в контексте
+var systemMessage = Message{
+	Role:    "system",
+	Content: "Ты — помощник по изучению английского языка. Я буду отправлять тебе слово на английском языке и несколько дополнительных слов. Ты должен отвечать в формате JSON. Ответ должен быть в формате JSON с полями: 1. Transcription (транскрипция) — string: транскрипция слова на British English; 2. Translation (перевод) — string: перевод слова на русский язык; 3. Description (описание) — string: объяснение значения слова на русском языке; 4. Synonyms (синонимы) — []string: список синонимов; 5. Examples (примеры) — []Example: список из 5 примеров. В каждом примере обязательно должны использоваться все или некоторые из дополнительных слов (learnedWords и upcomingWords) из запроса. Для каждого примера нужно указать: sentence — string: пример использования слова с дополнительными словами; keywords — []string: новые слова в примере; translation — string: перевод примера на русский; area — string: область или контекст примера."}
+
 // Функция для получения данных о слове от ChatGPT
-func GetWordDetailsFromGPT(word string) (string, string, string, error) {
-	requestBody := OpenAIRequest{
-		Model: "gpt-3.5-turbo",
-		Messages: []Message{
-			{
-				Role:    "system",
-				Content: "Ты — помощник по изучению английского языка. Предоставь транскрипцию, описание и примеры для данного слова.",
-			},
-			{
-				Role:    "user",
-				Content: fmt.Sprintf("Слово: %s", word),
-			},
-		},
+func GetWordDetailsFromGPT(word string, learnedWords []string, upcomingWords string) (string, string, string, []string, []Example, error) {
+	// Формируем новое сообщение с текущим словом
+	userMessage := Message{
+		Role: "user",
+		Content: fmt.Sprintf(`{
+			"word": "%s",
+			"learnedWords": %v,
+			"upcomingWords": %v
+		}`, word, learnedWords, upcomingWords),
 	}
 
+	// Формируем запрос, включая только инструкцию и текущее сообщение
+	requestBody := OpenAIRequest{
+		Model:    "gpt-3.5-turbo",
+		Messages: []Message{systemMessage, userMessage}, // Инструкция + текущее сообщение
+	}
+
+	// Конвертируем запрос в JSON
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
-		return "", "", "", fmt.Errorf("error marshalling request: %v", err)
+		return "", "", "", nil, nil, fmt.Errorf("error marshalling request: %v", err)
 	}
 
+	fmt.Printf("Request body to GPT: %s\n", jsonData) // Логируем тело запроса
+
+	// Создаем HTTP-запрос к OpenAI API
 	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(jsonData))
 	if err != nil {
-		return "", "", "", fmt.Errorf("error creating request: %v", err)
+		return "", "", "", nil, nil, fmt.Errorf("error creating request: %v", err)
 	}
 
+	// Логируем URL и заголовки запроса
+	fmt.Printf("Request URL: %s\n", req.URL)
+	fmt.Printf("Request headers: %v\n", req.Header)
+
+	// Устанавливаем необходимые заголовки
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("OPENAI_API_KEY")))
 
+	// Выполняем запрос
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", "", "", fmt.Errorf("error making request: %v", err)
+		return "", "", "", nil, nil, fmt.Errorf("error making request: %v", err)
 	}
 	defer resp.Body.Close()
 
+	// Логируем статус ответа
+	fmt.Println("GPT Response Status:", resp.StatusCode)
+
+	// Обрабатываем ответ
 	var openAIResponse OpenAIResponse
 	if err := json.NewDecoder(resp.Body).Decode(&openAIResponse); err != nil {
-		return "", "", "", fmt.Errorf("error decoding response: %v", err)
+		return "", "", "", nil, nil, fmt.Errorf("error decoding response: %v", err)
 	}
 
-	// Проверка на наличие ответа
+	// Проверяем, что ответ содержит хотя бы один выбор
 	if len(openAIResponse.Choices) == 0 {
-		return "", "", "", fmt.Errorf("no choices returned from GPT")
+		return "", "", "", nil, nil, fmt.Errorf("no choices returned from GPT")
 	}
 
-	// Получаем содержимое ответа
+	// Логируем полученный ответ от GPT
 	content := openAIResponse.Choices[0].Message.Content
+	fmt.Println("GPT Response:", content)
 
 	// Парсим содержимое ответа
-	transcription, description, examples := parseGPTResponse(content)
+	wordDetails, err := parseGPTResponse(content)
+	if err != nil {
+		return "", "", "", nil, nil, fmt.Errorf("error parsing GPT response: %v", err)
+	}
 
-	return transcription, description, examples, nil
+	return wordDetails.Transcription, wordDetails.Translation, wordDetails.Description, wordDetails.Synonyms, wordDetails.Examples, nil
 }
 
-// Функция для парсинга ответа от ChatGPT
-func parseGPTResponse(response string) (string, string, string) {
-	// Ищем блоки "Transcription:", "Description:" и "Examples:"
-	transcription := extractBetween(response, "Transcription:", "Description:")
-	description := extractBetween(response, "Description:", "Examples:")
-	examples := extractExamples(response)
+// Функция для парсинга ответа в нужную структуру
+func parseGPTResponse(content string) (WordDetails, error) {
+	var wordDetails WordDetails
 
-	return strings.TrimSpace(transcription), strings.TrimSpace(description), strings.TrimSpace(examples)
-}
-
-// Вспомогательная функция для извлечения текста между двумя подстроками
-func extractBetween(value string, start string, end string) string {
-	s := strings.Index(value, start)
-	if s == -1 {
-		return ""
+	// Пытаемся распарсить JSON-ответ
+	err := json.Unmarshal([]byte(content), &wordDetails)
+	if err != nil {
+		return WordDetails{}, fmt.Errorf("failed to parse GPT response: %v", err)
 	}
-	s += len(start)
-	e := strings.Index(value[s:], end)
-	if e == -1 {
-		return value[s:]
-	}
-	return value[s : s+e]
-}
-
-// Вспомогательная функция для извлечения примеров
-func extractExamples(value string) string {
-	examplesStart := strings.Index(value, "Examples:")
-	if examplesStart == -1 {
-		return ""
-	}
-	examples := value[examplesStart+len("Examples:"):]
-
-	// Преобразуем примеры в читаемый формат
-	examples = strings.ReplaceAll(examples, "\n", " ")
-	examples = strings.TrimSpace(examples)
-
-	return examples
+	return wordDetails, nil
 }

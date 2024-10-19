@@ -8,10 +8,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-func SearchUsersHandler(conn *pgx.Conn) http.HandlerFunc {
+func SearchUsersHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Получаем роль пользователя из токена
 		userRole, err := services.GetUserRoleFromToken(r)
@@ -48,7 +48,7 @@ func SearchUsersHandler(conn *pgx.Conn) http.HandlerFunc {
 		WHERE u.role = $2;
 		`
 
-		rows, err := conn.Query(context.Background(), query, userID, roleToSearch)
+		rows, err := dbpool.Query(context.Background(), query, userID, roleToSearch)
 		if err != nil {
 			http.Error(w, "Failed to search users", http.StatusInternalServerError)
 			return
@@ -87,7 +87,7 @@ func SearchUsersHandler(conn *pgx.Conn) http.HandlerFunc {
 	}
 }
 
-func ProfileHandler(conn *pgx.Conn) http.HandlerFunc {
+func ProfileHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Извлекаем идентификатор пользователя из токена
 		userID, err := services.GetUserIDFromToken(r)
@@ -98,7 +98,7 @@ func ProfileHandler(conn *pgx.Conn) http.HandlerFunc {
 
 		// Выполняем запрос к базе данных для получения данных профиля пользователя
 		var user models.User
-		err = conn.QueryRow(context.Background(), "SELECT id, name, email, role FROM users WHERE id = $1", userID).Scan(&user.ID, &user.Name, &user.Email, &user.Role)
+		err = dbpool.QueryRow(context.Background(), "SELECT id, name, email, role FROM users WHERE id = $1", userID).Scan(&user.ID, &user.Name, &user.Email, &user.Role)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
@@ -109,7 +109,7 @@ func ProfileHandler(conn *pgx.Conn) http.HandlerFunc {
 	}
 }
 
-func UpdateProfileHandler(conn *pgx.Conn) http.HandlerFunc {
+func UpdateProfileHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := services.GetUserIDFromToken(r) // Извлекаем userID из токена
 		if err != nil {
@@ -124,7 +124,7 @@ func UpdateProfileHandler(conn *pgx.Conn) http.HandlerFunc {
 		}
 
 		// Обновляем данные пользователя в базе
-		_, err = conn.Exec(context.Background(), "UPDATE users SET name=$1, email=$2 WHERE id=$3", updatedUser.Name, updatedUser.Email, userID)
+		_, err = dbpool.Exec(context.Background(), "UPDATE users SET name=$1, email=$2 WHERE id=$3", updatedUser.Name, updatedUser.Email, userID)
 		if err != nil {
 			http.Error(w, "Failed to update profile", http.StatusInternalServerError)
 			return
@@ -135,7 +135,7 @@ func UpdateProfileHandler(conn *pgx.Conn) http.HandlerFunc {
 	}
 }
 
-func CreateTeacherStudentLink(conn *pgx.Conn) http.HandlerFunc {
+func CreateTeacherStudentLink(dbpool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var linkData struct {
 			TeacherID string `json:"teacher_id"`
@@ -148,7 +148,7 @@ func CreateTeacherStudentLink(conn *pgx.Conn) http.HandlerFunc {
 		}
 
 		// Добавляем связь в таблицу
-		_, err := conn.Exec(context.Background(), "INSERT INTO teacher_student (teacher_id, student_id) VALUES ($1, $2)", linkData.TeacherID, linkData.StudentID)
+		_, err := dbpool.Exec(context.Background(), "INSERT INTO teacher_student (teacher_id, student_id) VALUES ($1, $2)", linkData.TeacherID, linkData.StudentID)
 		if err != nil {
 			http.Error(w, "Failed to create link", http.StatusInternalServerError)
 			return
@@ -159,7 +159,7 @@ func CreateTeacherStudentLink(conn *pgx.Conn) http.HandlerFunc {
 	}
 }
 
-func RemoveTeacherStudentLink(conn *pgx.Conn) http.HandlerFunc {
+func RemoveTeacherStudentLink(dbpool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var linkData struct {
 			TeacherID string `json:"teacher_id"`
@@ -176,7 +176,7 @@ func RemoveTeacherStudentLink(conn *pgx.Conn) http.HandlerFunc {
 		}
 
 		// Удаляем связь из таблицы
-		_, err := conn.Exec(context.Background(), "DELETE FROM teacher_student WHERE teacher_id=$1 AND student_id=$2", linkData.TeacherID, linkData.StudentID)
+		_, err := dbpool.Exec(context.Background(), "DELETE FROM teacher_student WHERE teacher_id=$1 AND student_id=$2", linkData.TeacherID, linkData.StudentID)
 		if err != nil {
 			log.Println("Error removing link:", err)
 			http.Error(w, "Failed to remove link", http.StatusInternalServerError)
@@ -189,7 +189,7 @@ func RemoveTeacherStudentLink(conn *pgx.Conn) http.HandlerFunc {
 	}
 }
 
-func GetTeacherStudentLinks(conn *pgx.Conn) http.HandlerFunc {
+func GetTeacherStudentLinks(dbpool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := services.GetUserIDFromToken(r) // Извлекаем userID из токена
 		if err != nil {
@@ -200,7 +200,7 @@ func GetTeacherStudentLinks(conn *pgx.Conn) http.HandlerFunc {
 		log.Println("Fetching links for user ID:", userID)
 
 		// Получаем все связи для данного пользователя
-		rows, err := conn.Query(context.Background(), "SELECT teacher_id, student_id FROM teacher_student WHERE teacher_id=$1 OR student_id=$1", userID)
+		rows, err := dbpool.Query(context.Background(), "SELECT teacher_id, student_id FROM teacher_student WHERE teacher_id=$1 OR student_id=$1", userID)
 		if err != nil {
 			http.Error(w, "Failed to fetch links", http.StatusInternalServerError)
 			return

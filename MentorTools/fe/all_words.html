@@ -5,146 +5,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vocabulary List</title>
     <script>
-// Функция для изменения статуса слова
-function changeStatus(wordId, newStatus) {
-    const token = localStorage.getItem('token');  // Получаем токен из localStorage
-    if (!token) {
-        alert('Токен не найден. Пожалуйста, авторизуйтесь.');
-        window.location.href = '/index.html';  // Перенаправление на страницу логина, если токен отсутствует
-        return;
-    }
-
-    fetch(`/update-word-status`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`  // Добавляем токен в заголовок Authorization
-        },
-        body: JSON.stringify({ wordId: wordId, status: newStatus }),  // Отправляем ID слова и новый статус
-    })
-    .then(response => {
-        if (response.status === 401) {
-            alert('Неавторизован. Пожалуйста, авторизуйтесь снова.');
-            window.location.href = '/index.html';  // Перенаправление на страницу логина при ошибке 401
-            return;
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            document.getElementById(`status-${wordId}`).textContent = newStatus;  // Обновляем статус на странице
-        } else {
-            alert('Ошибка при изменении статуса.');
-        }
-    })
-    .catch(error => {
-        console.error('Error changing status:', error);  // Логируем ошибку в случае неудачи
-    });
-}
-
-         // Функция для добавления нового слова
-    function addWord() {
-        const newWord = prompt('Введите новое слово:');
-        if (newWord) {
-            const token = localStorage.getItem('token');  // Получаем токен из localStorage
-            if (!token) {
-                alert('Токен не найден. Пожалуйста, авторизуйтесь.');
-                window.location.href = '/index.html';  // Перенаправление на страницу логина, если токен отсутствует
-                return;
-            }
-
-            fetch('/add-word', {
+        // Функция для изменения статуса слова
+        function changeStatus(wordId, newStatus) {
+            const token = localStorage.getItem('token');
+            fetch(`/update-word-status`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,  // Добавляем токен в заголовок Authorization
+                    'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ word: newWord }),
+                body: JSON.stringify({ wordId: wordId, status: newStatus }),
             })
-            .then(response => {
-                // Проверяем, авторизован ли пользователь (если статус 401, перенаправляем на логин)
-                if (response.status === 401) {
-                    alert('Неавторизован. Пожалуйста, авторизуйтесь снова.');
-                    window.location.href = '/index.html';
-                    return;
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    const wordList = document.getElementById('word-list');
-                    const wordElement = document.createElement('li');
-                    wordElement.innerHTML = `${data.word.word} - 
-                        <span id="status-${data.word.id}">${data.word.status}</span>
-                        <button onclick="changeStatus(${data.word.id}, 'learned')">Выучено</button>
-                        <button onclick="changeStatus(${data.word.id}, 'need to learn')">Нужно выучить</button>`;
-                    wordList.appendChild(wordElement);
-                } else {
-                    alert('Ошибка при добавлении слова.');
+                    document.getElementById(`status-${wordId}`).textContent = newStatus;
                 }
-            })
-            .catch(error => {
-                console.error('Error adding word:', error);
             });
         }
-    }
+
+        // Функция для добавления нового слова
+        function addWord() {
+            const newWord = prompt('Введите новое слово:');
+            if (newWord) {
+                const token = localStorage.getItem('token');
+                fetch('/add-word', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ word: newWord }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const wordList = document.getElementById('word-list');
+                        const wordElement = document.createElement('li');
+                        wordElement.innerHTML = `
+                            <strong>${data.word.word}</strong> (${data.word.transcription}) - ${data.word.translation}
+                            <span id="status-${data.word.id}">${data.word.status}</span>
+                            <button onclick="changeStatus(${data.word.id}, 'learned')">Выучено</button>
+                            <button onclick="changeStatus(${data.word.id}, 'need to learn')">Нужно выучить</button>
+                            <a href="word_details.html?id=${data.word.id}" class="btn btn-info btn-sm">Подробнее</a>`;
+                        wordList.appendChild(wordElement);
+                    }
+                });
+            }
+        }
 
         // Загрузка списка слов ученика
         window.onload = function() {
-    const token = localStorage.getItem('token');  // Получаем токен из localStorage
-    if (!token) {
-        alert('Токен не найден. Пожалуйста, авторизуйтесь.');
-        window.location.href = '/index.html';  // Перенаправление на страницу логина, если токен отсутствует
-        return;
-    }
-
-    // Логируем токен для проверки
-    console.log('Token:', token);
-
-    fetch('/get-words', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}`,  // Добавляем токен в заголовок Authorization
-            'Content-Type': 'application/json',
-        },
-    })
-    .then(response => {
-        // Проверяем статус ответа
-        console.log('Response status:', response.status);
-        if (response.status === 401) {
-            alert('Неавторизован. Пожалуйста, авторизуйтесь снова.');
-            window.location.href = '/index.html';  // Перенаправление на страницу логина при ошибке 401
-            return;
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (!data || !data.words) {
-            console.error('Invalid response data:', data);
-            return;
-        }
-
-        const wordList = document.getElementById('word-list');
-        data.words.forEach(word => {
-            const wordElement = document.createElement('li');
-            wordElement.innerHTML = `${word.word} - 
-                <span id="status-${word.id}">${word.status}</span> 
-                <button onclick="changeStatus(${word.id}, 'learned')">Выучено</button>
-                <button onclick="changeStatus(${word.id}, 'need to learn')">Нужно выучить</button>`;
-            wordList.appendChild(wordElement);
-        });
-    })
-    .catch(error => {
-        console.error('Error fetching words:', error);
-    });
-};
-
+            const token = localStorage.getItem('token');
+            fetch('/get-words', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const wordList = document.getElementById('word-list');
+                data.words.forEach(word => {
+                    const wordElement = document.createElement('li');
+                    wordElement.innerHTML = `
+                        <strong>${word.word}</strong> (${word.transcription}) - ${word.translation}
+                        <span id="status-${word.id}">${word.status}</span>
+                        <button onclick="changeStatus(${word.id}, 'learned')">Выучено</button>
+                        <button onclick="changeStatus(${word.id}, 'need to learn')">Нужно выучить</button>
+                        <a href="word_details.html?id=${word.id}" class="btn btn-info btn-sm">Подробнее</a>`;
+                    wordList.appendChild(wordElement);
+                });
+            });
+        };
     </script>
 </head>
 <body>
     <h1>My Vocabulary</h1>
-
-    <!-- Кнопка добавления нового слова -->
+    
+    <!-- Кнопка для добавления нового слова -->
     <button onclick="addWord()">Добавить новое слово</button>
 
     <ul id="word-list">
