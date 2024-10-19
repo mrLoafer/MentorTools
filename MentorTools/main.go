@@ -20,6 +20,7 @@ func main() {
 	}
 	defer dbpool.Close()
 
+	//test
 	// Создание роутера
 	router := mux.NewRouter()
 
