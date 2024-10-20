@@ -33,12 +33,7 @@
 
     // Функция для открытия формы редактирования профиля
     function openEditProfile() {
-        const userId = localStorage.getItem('userId'); // Получение ID пользователя, сохраненного при логине
-        if (!userId) {
-            alert("User ID is missing. Please log in again.");
-            return;
-        }
-        window.location.href = `edit_profile.html?id=${userId}`; // Перенаправление на форму редактирования профиля
+        window.location.href = `edit_profile.html`; // Перенаправление на форму редактирования профиля
     }
 
     // Функция для открытия словаря

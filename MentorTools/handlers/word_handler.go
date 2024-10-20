@@ -10,7 +10,6 @@ import (
 	"MentorTools/models"
 	"MentorTools/services"
 
-	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -110,8 +109,7 @@ func AddWordHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
 		}
 
 		// Извлекаем дополнительные слова ученика (рандомно)
-		var learnedWords []string
-		var upcomingWords string
+		var wordsForExamples []string
 
 		// Получаем 5 рандомных слова, которые ученик уже выучил
 		rows, err := dbpool.Query(context.Background(), "SELECT w.word FROM words w JOIN student_words sw ON w.id = sw.word_id WHERE sw.student_id = $1 AND sw.status = 'learned' ORDER BY random() LIMIT 5", userID)
@@ -125,18 +123,26 @@ func AddWordHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
 				http.Error(w, "Failed to read learned word", http.StatusInternalServerError)
 				return
 			}
-			learnedWords = append(learnedWords, learnedWord)
+			wordsForExamples = append(wordsForExamples, learnedWord)
 		}
 
-		// Получаем одно рандомное слово, которое нужно выучить
-		err = dbpool.QueryRow(context.Background(), "SELECT w.word FROM words w JOIN student_words sw ON w.id = sw.word_id WHERE sw.student_id = $1 AND sw.status = 'need to learn' ORDER BY random() LIMIT 1", userID).Scan(&upcomingWords)
-		if err != nil && err != pgx.ErrNoRows {
+		// Получаем 2 рандомных слов, которые нужно выучить
+		rowss, err := dbpool.Query(context.Background(), "SELECT w.word FROM words w JOIN student_words sw ON w.id = sw.word_id WHERE sw.student_id = $1 AND sw.status = 'need to learn' ORDER BY random() LIMIT 2", userID)
+		if err != nil {
 			http.Error(w, "Failed to fetch upcoming words!", http.StatusInternalServerError)
 			return
 		}
+		for rowss.Next() {
+			var upcomingWord string
+			if err := rowss.Scan(&upcomingWord); err != nil {
+				http.Error(w, "Failed to read upcoming word", http.StatusInternalServerError)
+				return
+			}
+			wordsForExamples = append(wordsForExamples, upcomingWord)
+		}
 
 		// Запрашиваем данные у OpenAI, включая дополнительные слова
-		transcription, translation, description, synonyms, examples, err := services.GetWordDetailsFromGPT(word, learnedWords, upcomingWords)
+		transcription, translation, description, synonyms, examples, err := services.GetWordDetailsFromGPT(word, wordsForExamples)
 		if err != nil {
 			http.Error(w, "Failed to fetch word details from GPT", http.StatusInternalServerError)
 			return

@@ -19,6 +19,12 @@
             <label for="email" class="form-label">Email:</label>
             <input type="email" id="email" class="form-control" required>
         </div>
+        <div class="form-group">
+            <label for="context">Выберите тему для примеров:</label>
+            <select id="context" class="form-control" multiple>
+                <!-- Темы будут загружены динамически -->
+            </select>
+        </div>
         <button type="submit" class="btn btn-primary w-100">Save Changes</button>
     </form>
 
@@ -26,69 +32,109 @@
 </div>
 
 <script>
-// Функция для загрузки данных профиля
-function loadProfile() {
-    // Получаем токен из localStorage
-    const token = localStorage.getItem('token');
+    // Функция для загрузки данных профиля
+    function loadProfile() {
+        const token = localStorage.getItem('token');
 
-    // Выполняем запрос для получения данных профиля
-    fetch('http://localhost:8080/profile', {
-        method: 'GET',
-        headers: {
-            'Authorization': 'Bearer ' + token  // Передаем токен
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Failed to load profile');
-        }
-        return response.json();
-    })
-    .then(profile => {
-        // Заполняем форму полученными данными
-        document.getElementById('name').value = profile.name;
-        document.getElementById('email').value = profile.email;
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        document.getElementById('responseMessage').textContent = 'Failed to load profile';
+        // Выполняем запрос для получения данных профиля
+        fetch('http://localhost:8080/profile', {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token  // Передаем токен
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to load profile');
+                }
+                return response.json();
+            })
+            .then(profile => {
+                // Заполняем форму полученными данными
+                document.getElementById('name').value = profile.name;
+                document.getElementById('email').value = profile.email;
+
+                // Выбираем тему пользователя
+                const contextSelect = document.getElementById('context');
+                Array.from(contextSelect.options).forEach(option => {
+                    if (option.value == profile.context_id) {
+                        option.selected = true;
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('responseMessage').textContent = 'Failed to load profile';
+            });
+    }
+
+    // Функция для сохранения изменений профиля
+    document.getElementById('editProfileForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const name = document.getElementById('name').value;
+        const email = document.getElementById('email').value;
+
+        // Собираем все выбранные темы в массив
+        const contextSelect = document.getElementById('context');
+        const selectedTopics = Array.from(contextSelect.selectedOptions).map(option => option.value);
+
+        const token = localStorage.getItem('token');
+
+        fetch('http://localhost:8080/profile', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+                name: name,
+                email: email,
+                topics: selectedTopics  // Отправляем массив с выбранными темами
+            })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to update profile');
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('responseMessage').textContent = data.status;  // Сообщение об успешном обновлении
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
     });
-}
 
-// Загружаем профиль при загрузке страницы
-document.addEventListener('DOMContentLoaded', loadProfile);
+    // Функция для загрузки доступных тем (contexts)
+    function loadContexts() {
+        const token = localStorage.getItem('token');
+        fetch('/get-contexts', {
+            headers: {
+                'Authorization': `Bearer ${token}`  // Отправляем токен для авторизации
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                const contextSelect = document.getElementById('context');
+                data.contexts.forEach(context => {
+                    const option = document.createElement('option');
+                    option.value = context.id;  // Используем ID темы для значений
+                    option.textContent = context.name;  // Отображаем имя темы
+                    contextSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading contexts:', error);
+            });
+    }
 
-// Обработка формы для сохранения изменений профиля
-document.getElementById('editProfileForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-
-    const name = document.getElementById('name').value;
-    const email = document.getElementById('email').value;
-
-    const token = localStorage.getItem('token');
-
-    fetch('http://localhost:8080/profile', {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
-        },
-        body: JSON.stringify({ name, email })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Failed to update profile');
-        }
-        return response.json();
-    })
-    .then(data => {
-        alert(data.status);  // Сообщение об успешном обновлении
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
-});
+    // Загружаем профиль и темы при загрузке страницы
+    window.onload = function() {
+        loadProfile();
+        loadContexts();
+    };
 </script>
-
 </body>
 </html>

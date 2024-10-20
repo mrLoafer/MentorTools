@@ -32,15 +32,15 @@ type Choice struct {
 
 // WordDetails структура для транскрипции, перевода, примеров и описания
 type WordDetails struct {
-	Transcription string    `json:"Transcription"`
-	Translation   string    `json:"Translation"`
-	Description   string    `json:"Description"`
-	Synonyms      []string  `json:"Synonyms"`
-	Examples      []Example `json:"Examples"`
+	Transcription string     `json:"Transcription"`
+	Translation   string     `json:"Translation"`
+	Description   string     `json:"Description"`
+	Synonyms      []string   `json:"Synonyms"`
+	Examples      []Examples `json:"Examples"`
 }
 
-// Example представляет пример использования слова
-type Example struct {
+// Examples представляет пример использования слова
+type Examples struct {
 	Text        string   `json:"sentence"`
 	Keywords    []string `json:"keywords"`
 	Translation string   `json:"translation"`
@@ -50,23 +50,22 @@ type Example struct {
 // Единственное сообщение-инструкция, которое будет храниться в контексте
 var systemMessage = Message{
 	Role:    "system",
-	Content: "Ты — помощник по изучению английского языка. Я буду отправлять тебе слово на английском языке и несколько дополнительных слов. Ты должен отвечать в формате JSON. Ответ должен быть в формате JSON с полями: 1. Transcription (транскрипция) — string: транскрипция слова на British English; 2. Translation (перевод) — string: перевод слова на русский язык; 3. Description (описание) — string: объяснение значения слова на русском языке; 4. Synonyms (синонимы) — []string: список синонимов; 5. Examples (примеры) — []Example: список из 5 примеров. В каждом примере обязательно должны использоваться все или некоторые из дополнительных слов (learnedWords и upcomingWords) из запроса. Для каждого примера нужно указать: sentence — string: пример использования слова с дополнительными словами; keywords — []string: новые слова в примере; translation — string: перевод примера на русский; area — string: область или контекст примера."}
+	Content: "Я отправлю тебе слово на английском языке (изучаемое слово) и слова-маркеры для генерации примеров.Ты должен сгенерировать следующую информацию строго в формате JSON без форматирования или дополнительных символов, таких как тройные кавычки:1. Transcription — string: транскрипция изучаемого слова на British English;2. Translation — string: перевод изучаемого слова на русский язык;3. Description — string: объяснение значения изучаемого слова на русском языке;4. Synonyms — []string: список синонимов для изучаемого слова на английском языке;5. Examples — []Examples: список из 5 или более примеров. Структура Examples:1. sentence — string: пример, должен быть максимально простым и коротким, но обязательно содержать изучаемое слово и слова-маркеры;2. keywords — []string: перечень неизвестных, новых, других слов, которые используются в примере (больше-лучше);3. translation — string: перевод примера на русский;4. area — string: область или контекст примера одним словом или выражением."}
 
-// Функция для получения данных о слове от ChatGPT
-func GetWordDetailsFromGPT(word string, learnedWords []string, upcomingWords string) (string, string, string, []string, []Example, error) {
+// GetWordDetailsFromGPT - Функция для получения данных о слове от ChatGPT
+func GetWordDetailsFromGPT(word string, wordsForExamples []string) (string, string, string, []string, []Examples, error) {
 	// Формируем новое сообщение с текущим словом
 	userMessage := Message{
 		Role: "user",
 		Content: fmt.Sprintf(`{
 			"word": "%s",
-			"learnedWords": %v,
-			"upcomingWords": %v
-		}`, word, learnedWords, upcomingWords),
+			"wordsForExamples": %v,
+		}`, word, wordsForExamples),
 	}
 
 	// Формируем запрос, включая только инструкцию и текущее сообщение
 	requestBody := OpenAIRequest{
-		Model:    "gpt-3.5-turbo",
+		Model:    "gpt-4-turbo",
 		Messages: []Message{systemMessage, userMessage}, // Инструкция + текущее сообщение
 	}
 
@@ -134,7 +133,7 @@ func parseGPTResponse(content string) (WordDetails, error) {
 	// Пытаемся распарсить JSON-ответ
 	err := json.Unmarshal([]byte(content), &wordDetails)
 	if err != nil {
-		return WordDetails{}, fmt.Errorf("failed to parse GPT response: %v", err)
+		return WordDetails{}, fmt.Errorf("failed to parse GPT response1: %v", err)
 	}
 	return wordDetails, nil
 }

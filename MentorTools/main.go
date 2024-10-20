@@ -20,7 +20,6 @@ func main() {
 	}
 	defer dbpool.Close()
 
-	//test
 	// Создание роутера
 	router := mux.NewRouter()
 
@@ -36,6 +35,9 @@ func main() {
 
 	// Добавляем маршрут для сохранения измененых данных о пользователе
 	router.Handle("/profile", middleware.AuthMiddleware(http.HandlerFunc(handlers.UpdateProfileHandler(dbpool)))).Methods("PUT")
+
+	// Роут для топиков
+	router.Handle("/get-contexts", middleware.AuthMiddleware(http.HandlerFunc(handlers.GetAvailableContextsHandler(dbpool)))).Methods("GET")
 
 	// Роут для создания связи между учителем и учеником
 	router.Handle("/link", middleware.AuthMiddleware(http.HandlerFunc(handlers.CreateTeacherStudentLink(dbpool)))).Methods("POST")

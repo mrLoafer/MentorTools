@@ -117,7 +117,13 @@ func UpdateProfileHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		var updatedUser models.User
+		// Структура для получения данных из запроса
+		var updatedUser struct {
+			Name   string `json:"name"`
+			Email  string `json:"email"`
+			Topics []int  `json:"topics"` // Ожидаем массив ID тем
+		}
+
 		if err := json.NewDecoder(r.Body).Decode(&updatedUser); err != nil {
 			http.Error(w, "Invalid input", http.StatusBadRequest)
 			return
@@ -130,6 +136,23 @@ func UpdateProfileHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
+		// Удаляем старые топики пользователя
+		_, err = dbpool.Exec(context.Background(), "DELETE FROM student_topics WHERE student_id = $1", userID)
+		if err != nil {
+			http.Error(w, "Failed to clear existing topics", http.StatusInternalServerError)
+			return
+		}
+
+		// Добавляем новые топики пользователя
+		for _, topicID := range updatedUser.Topics {
+			_, err = dbpool.Exec(context.Background(), "INSERT INTO student_topics (student_id, topic_id) VALUES ($1, $2)", userID, topicID)
+			if err != nil {
+				http.Error(w, "Failed to save topics", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		// Возвращаем успешный ответ
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]string{"status": "Profile updated successfully"})
 	}
@@ -241,5 +264,36 @@ func GetUserRoleHandler() http.HandlerFunc {
 
 		// Возвращаем роль пользователя в JSON
 		json.NewEncoder(w).Encode(map[string]string{"role": userRole})
+	}
+}
+
+func GetAvailableContextsHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Запрос для получения тем из таблицы contexts
+		rows, err := dbpool.Query(context.Background(), "SELECT id, topic_name FROM topics")
+		if err != nil {
+			http.Error(w, "Failed to retrieve contexts", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		// Массив для хранения тем
+		var contexts []map[string]interface{}
+		for rows.Next() {
+			var id int
+			var name string
+			if err := rows.Scan(&id, &name); err != nil {
+				http.Error(w, "Error scanning contexts", http.StatusInternalServerError)
+				return
+			}
+			contexts = append(contexts, map[string]interface{}{
+				"id":   id,
+				"name": name,
+			})
+		}
+
+		// Возвращаем темы в формате JSON
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"contexts": contexts})
 	}
 }
