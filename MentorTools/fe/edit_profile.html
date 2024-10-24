@@ -57,7 +57,7 @@
                 // Выбираем тему пользователя
                 const contextSelect = document.getElementById('context');
                 Array.from(contextSelect.options).forEach(option => {
-                    if (option.value == profile.context_id) {
+                    if (option.value === profile.context_id) {
                         option.selected = true;
                     }
                 });
@@ -77,7 +77,7 @@
 
         // Собираем все выбранные темы в массив
         const contextSelect = document.getElementById('context');
-        const selectedTopics = Array.from(contextSelect.selectedOptions).map(option => option.value);
+        const selectedTopics = Array.from(contextSelect.selectedOptions).map(option => parseInt(option.value));
 
         const token = localStorage.getItem('token');
 

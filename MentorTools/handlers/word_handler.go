@@ -108,8 +108,9 @@ func AddWordHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
 			// Если слово в статусе "pending", продолжаем и запрашиваем данные у OpenAI
 		}
 
-		// Извлекаем дополнительные слова ученика (рандомно)
+		// Извлекаем слова и топики для примеров
 		var wordsForExamples []string
+		var topics []string
 
 		// Получаем 5 рандомных слова, которые ученик уже выучил
 		rows, err := dbpool.Query(context.Background(), "SELECT w.word FROM words w JOIN student_words sw ON w.id = sw.word_id WHERE sw.student_id = $1 AND sw.status = 'learned' ORDER BY random() LIMIT 5", userID)
@@ -141,8 +142,26 @@ func AddWordHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
 			wordsForExamples = append(wordsForExamples, upcomingWord)
 		}
 
+		// Получаем топики
+		topicRows, err := dbpool.Query(context.Background(), `SELECT c.topic_name FROM student_topics st JOIN topics c ON st.topic_id = c.id WHERE st.student_id = $1 ORDER BY random() LIMIT 5`, userID)
+
+		if err != nil {
+			http.Error(w, "Failed to fetch topics", http.StatusInternalServerError)
+			return
+		}
+		defer topicRows.Close()
+
+		for topicRows.Next() {
+			var topic string
+			if err := topicRows.Scan(&topic); err != nil {
+				http.Error(w, "Error scanning topics", http.StatusInternalServerError)
+				return
+			}
+			topics = append(topics, topic)
+		}
+
 		// Запрашиваем данные у OpenAI, включая дополнительные слова
-		transcription, translation, description, synonyms, examples, err := services.GetWordDetailsFromGPT(word, wordsForExamples)
+		transcription, translation, description, synonyms, examples, err := services.GetWordDetailsFromGPT(word, wordsForExamples, topics)
 		if err != nil {
 			http.Error(w, "Failed to fetch word details from GPT", http.StatusInternalServerError)
 			return
@@ -211,7 +230,7 @@ func AddWordHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
 				err := dbpool.QueryRow(context.Background(), "SELECT id FROM words WHERE word = $1", keyword).Scan(&keywordID)
 
 				if err != nil {
-					// Если слово не найдено, добавляем его с статусом 'pending'
+					// Если слово не найдено, добавляем его со статусом 'pending'
 					err = dbpool.QueryRow(context.Background(), "INSERT INTO words (word, status) VALUES ($1, $2) RETURNING id", keyword, "pending").Scan(&keywordID)
 
 					if err != nil {
