@@ -1,0 +1,15 @@
+databases:
+  auth_db:
+    host: "localhost"
+    port: 5432
+    user: "auth_user"
+    password: "auth_password"
+    dbname: "auth_db"
+    sslmode: "disable"
+  dictionary_db:
+    host: "localhost"
+    port: 5432
+    user: "dict_user"
+    password: "dict_password"
+    dbname: "dictionary_db"
+    sslmode: "disable"

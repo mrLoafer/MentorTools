@@ -1,0 +1,90 @@
+MentorTools/
+├── cmd/                        // Entry points for each microservice
+│   ├── auth-service/
+│   │   └── main.go             // Main application file for Auth Service
+│   ├── dictionary-service/
+│   │   └── main.go             // Main application file for Dictionary Service
+│   ├── gpt-service/
+│   │   └── main.go             // Main application file for GPT Service
+│   └── user-service/
+│       └── main.go             // Main application file for User Service
+├── internal/                   // Internal code for microservices
+│   ├── auth/                   // Auth Service internal code
+│   │   ├── handlers/
+│   │   ├── models/
+│   │   ├── services/
+│   │   └── repository/
+│   ├── dictionary/             // Dictionary Service internal code
+│   │   ├── handlers/
+│   │   ├── models/
+│   │   ├── services/
+│   │   └── repository/
+│   ├── gpt/                    // GPT Service internal code
+│   │   ├── handlers/
+│   │   ├── models/
+│   │   ├── services/
+│   │   └── repository/
+│   └── user/                   // User Service internal code
+│       ├── handlers/
+│       ├── models/
+│       ├── services/
+│       └── repository/
+├── pkg/                        // Shared libraries and utilities
+│   ├── logger/                 // Logging utilities and configurations
+│   ├── config/                 // Configuration loading and management
+│   ├── utils/                  // General utility functions and helpers
+│   └── middleware/             // Shared middleware (e.g., AuthMiddleware)
+│       └── auth_middleware.go   // JWT Authentication Middleware
+├── api/                        // API definitions and specifications
+│   ├── auth-service.yaml       // OpenAPI/Swagger spec for Auth Service
+│   ├── dictionary-service.yaml // OpenAPI/Swagger spec for Dictionary Service
+│   ├── gpt-service.yaml        // OpenAPI/Swagger spec for GPT Service
+│   └── user-service.yaml       // OpenAPI/Swagger spec for User Service
+├── deployments/                // Deployment configurations and scripts
+│   ├── docker/
+│   │   ├── auth-service/
+│   │   │   └── Dockerfile      // Dockerfile for Auth Service
+│   │   ├── dictionary-service/
+│   │   │   └── Dockerfile      // Dockerfile for Dictionary Service
+│   │   ├── gpt-service/
+│   │   │   └── Dockerfile      // Dockerfile for GPT Service
+│   │   └── user-service/
+│   │       └── Dockerfile      // Dockerfile for User Service
+│   └── kubernetes/
+│       ├── auth-service/
+│       │   └── deployment.yaml // Kubernetes deployment config for Auth Service
+│       ├── dictionary-service/
+│       │   └── deployment.yaml // Kubernetes deployment config for Dictionary Service
+│       ├── gpt-service/
+│       │   └── deployment.yaml // Kubernetes deployment config for GPT Service
+│       └── user-service/
+│           └── deployment.yaml // Kubernetes deployment config for User Service
+├── scripts/                    // Automation scripts for setup and deployment
+│   ├── setup.sh                // Script to set up the development environment
+│   └── deploy.sh               // Script to deploy the application to production
+├── fe/                         // Frontend Client (React)
+│   ├── public/
+│   │   ├── assets/
+│   │   │   ├── css/            // CSS stylesheets
+│   │   │   ├── images/         // Image assets
+│   │   │   └── js/             // JavaScript assets
+│   │   ├── index.html          // Main HTML file for React app
+│   │   └── favicon.ico         // Favicon for the application
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── auth/           // Authentication-related React components
+│   │   │   ├── user/           // User-related React components
+│   │   │   ├── words/          // Word management React components
+│   │   │   └── shared/         // Shared React components across the app
+│   │   ├── pages/              // Page-level React components for routing
+│   │   ├── services/           // API interaction services using Axios or Fetch
+│   │   ├── hooks/              // Custom React hooks for state management
+│   │   ├── App.js              // Root React component
+│   │   └── index.js            // Entry point for React application
+│   ├── package.json            // Frontend dependencies and scripts
+│   ├── .env                    // Environment variables for frontend
+│   └── README.md               // Documentation for the frontend
+├── go.mod                      // Go module definitions and dependencies
+├── go.sum                      // Go module checksums
+├── README.md                   // Project documentation and overview
+└── .gitignore                  // Files and directories to ignore in Git
