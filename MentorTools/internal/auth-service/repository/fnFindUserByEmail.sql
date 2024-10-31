@@ -1,10 +1,11 @@
 DROP FUNCTION IF EXISTS public.fnFindUserByEmail(varchar);
 
-CREATE OR REPLACE FUNCTION public."fnFindUserByEmail"(p_email VARCHAR)
+CREATE OR REPLACE FUNCTION public.fnFindUserByEmail(p_email VARCHAR)
     RETURNS TABLE(email VARCHAR, password_hash VARCHAR, username VARCHAR, role_name VARCHAR) AS $$
 BEGIN
     RETURN QUERY
         SELECT
+            u.id,
             u.email,
             u.password_hash,
             u.username,
@@ -17,5 +18,5 @@ $$ LANGUAGE plpgsql;
 
 -- Permissions
 
-ALTER FUNCTION public."fnFindUserByEmail"(varchar) OWNER TO auth_user;
-GRANT ALL ON FUNCTION public."fnFindUserByEmail"(varchar) TO auth_user;
+ALTER FUNCTION public.fnFindUserByEmail(varchar) OWNER TO auth_user;
+GRANT ALL ON FUNCTION public.fnFindUserByEmail(varchar) TO auth_user;

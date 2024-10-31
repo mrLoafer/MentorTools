@@ -1,18 +1,17 @@
-# cmd/auth-service/Dockerfile
-
 # Stage 1: Build the application
 FROM golang:1.20-alpine AS builder
 
 WORKDIR /app
 
-# Копируем go.mod и go.sum для установки зависимостей
+# Copy go.mod and go.sum for dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Копируем весь исходный код
+# Copy all source code and config.yaml
 COPY . .
+COPY pkg/config/config.yaml /app/config/config.yaml
 
-# Собираем бинарный файл
+# Build the binary
 RUN go build -o auth-service ./cmd/auth-service/main.go
 
 # Stage 2: Run the application
@@ -20,11 +19,12 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# Копируем бинарный файл из этапа сборки
+# Copy binary and config.yaml from builder
 COPY --from=builder /app/auth-service .
+COPY --from=builder /app/config/config.yaml ./config/config.yaml
 
-# Указываем внутренний порт приложения
+# Expose internal app port
 EXPOSE 8080
 
-# Команда для запуска приложения
+# Run the app
 CMD ["./auth-service"]

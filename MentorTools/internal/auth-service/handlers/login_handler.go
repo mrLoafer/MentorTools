@@ -1,49 +1,54 @@
 package handlers
 
 import (
-	"MentorTools/auth-service/models"
-	"MentorTools/auth-service/services"
-	"context"
 	"encoding/json"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"net/http"
+
+	"MentorTools/internal/auth-service/models"
+	"MentorTools/internal/auth-service/services"
 )
 
-// LoginHandler handles user login, validates credentials, and returns a JWT token.
-func LoginHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
+// LoginHandler handles user login and token generation.
+func LoginHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var credentials struct {
-			Email    string `json:"email"`
-			Password string `json:"password"`
-		}
+		var loginRequest models.UserLoginRequest
 
-		// Decode login credentials from request body
-		if err := json.NewDecoder(r.Body).Decode(&credentials); err != nil {
+		// Decode login data
+		if err := json.NewDecoder(r.Body).Decode(&loginRequest); err != nil {
 			http.Error(w, "Invalid request payload", http.StatusBadRequest)
 			return
 		}
 
-		// Check user in the database (example query; adapt as needed)
-		var user models.JwtData
-		err := dbpool.QueryRow(
-			context.Background(),
-			"SELECT id, email, role FROM users WHERE email=$1 AND password=$2",
-			credentials.Email, credentials.Password,
-		).Scan(&user.ID, &user.Email, &user.Role)
-		if err != nil {
-			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		// Create a context with request's context
+		ctx := r.Context()
+
+		// Authenticate user using the service layer
+		token, appErr := services.AuthenticateUser(ctx, loginRequest)
+		if appErr != nil {
+			// Set response content type and handle error based on AppError code
+			w.Header().Set("Content-Type", "application/json")
+
+			switch appErr.Code {
+			case "AUTH0003": // User not found
+				w.WriteHeader(http.StatusNotFound)
+			case "AUTH0004": // Invalid password
+				w.WriteHeader(http.StatusUnauthorized)
+			default: // General internal error
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+
+			// Encode and send the error response
+			if err := json.NewEncoder(w).Encode(appErr); err != nil {
+				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			}
 			return
 		}
 
-		// Generate JWT token
-		token, err := services.GenerateJWT(user)
-		if err != nil {
-			http.Error(w, "Failed to generate token", http.StatusInternalServerError)
-			return
-		}
-
-		// Respond with the token
+		// Respond with the generated token on successful login
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"token": token})
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(map[string]string{"token": token}); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		}
 	}
 }

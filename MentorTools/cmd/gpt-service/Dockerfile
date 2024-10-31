@@ -12,6 +12,9 @@ RUN go mod download
 # Копируем весь исходный код
 COPY . .
 
+# Copy the config.yaml file
+COPY MentorTools/pkg/config/config.yaml /app/config/config.yaml
+
 # Собираем бинарный файл
 RUN go build -o gpt-service ./cmd/gpt-service/main.go
 

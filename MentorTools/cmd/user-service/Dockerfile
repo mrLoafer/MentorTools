@@ -9,6 +9,9 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
+# Copy the config.yaml file
+COPY MentorTools/pkg/config/config.yaml /app/config/config.yaml
+
 # Копируем весь исходный код
 COPY . .
 

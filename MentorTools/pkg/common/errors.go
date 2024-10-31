@@ -6,6 +6,10 @@ type AppError struct {
 	Message string `json:"message"`
 }
 
+func (e *AppError) Error() string {
+	return e.Message
+}
+
 // NewAppError creates a new AppError with a given code and message.
 func NewAppError(code, message string) *AppError {
 	return &AppError{

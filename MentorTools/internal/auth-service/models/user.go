@@ -2,12 +2,17 @@ package models
 
 import "github.com/dgrijalva/jwt-go"
 
-// UserRegistrationRequest represents the payload for a user registration request.
-type UserRegistrationRequest struct {
+// UserBase содержит общие поля, используемые в других моделях пользователя.
+type UserBase struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Role     string `json:"role"`
 	Username string `json:"username"`
+}
+
+// UserRegistrationRequest represents the payload for a user registration request.
+type UserRegistrationRequest struct {
+	UserBase
 }
 
 // UserLoginRequest represents the payload for a user login request.
@@ -18,14 +23,13 @@ type UserLoginRequest struct {
 
 // User represents a user in the database.
 type User struct {
-	Email    string
-	Password string
-	Role     string
-	Username string
+	UserBase
+	ID int `json:"id"`
 }
 
+// JwtData represents the data stored in a JWT token.
 type JwtData struct {
-	ID    string `json:"userId"`
+	ID    int    `json:"userId"`
 	Email string `json:"email"`
 	Role  string `json:"role"`
 	jwt.StandardClaims

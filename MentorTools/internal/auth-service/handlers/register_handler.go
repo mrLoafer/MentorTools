@@ -9,10 +9,9 @@ import (
 	"MentorTools/internal/auth-service/models"
 	"MentorTools/internal/auth-service/services"
 	"MentorTools/pkg/common"
-
-	"github.com/jackc/pgx/v4/pgxpool"
 )
 
+// emailRegex is used to validate the format of email addresses.
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 
 // isValidEmail checks if the provided email is in a valid format.
@@ -20,8 +19,8 @@ func isValidEmail(email string) bool {
 	return emailRegex.MatchString(email)
 }
 
-// RegisterHandler handles user registration without generating a token.
-func RegisterHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
+// RegisterHandler handles user registration.
+func RegisterHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var newUser models.UserRegistrationRequest
 
@@ -44,16 +43,17 @@ func RegisterHandler(dbpool *pgxpool.Pool) http.HandlerFunc {
 
 		// Register the user using the service layer
 		user := models.User{
-			Email:    newUser.Email,
-			Password: newUser.Password,
-			Role:     newUser.Role,
-			Username: newUser.Username,
+			UserBase: models.UserBase{
+				Email:    newUser.Email,
+				Password: newUser.Password,
+				Role:     newUser.Role,
+				Username: newUser.Username,
+			},
 		}
-		appErr := services.RegisterUser(context.Background(), dbpool, user)
+		appErr := services.RegisterUser(context.Background(), user)
 		if appErr != nil {
-			// Return structured error with code and message
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusConflict) // Set HTTP status based on error type
+			w.WriteHeader(http.StatusConflict)
 			if err := json.NewEncoder(w).Encode(appErr); err != nil {
 				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 			}
