@@ -7,9 +7,10 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy all source code and config.yaml
-COPY . .
-COPY pkg/config/config.yaml /app/config/config.yaml
+# Copy source code
+COPY cmd/auth-service ./cmd/auth-service
+COPY internal/auth-service ./internal/auth-service
+COPY pkg ./pkg
 
 # Build the binary
 RUN go build -o auth-service ./cmd/auth-service/main.go
@@ -21,7 +22,6 @@ WORKDIR /app
 
 # Copy binary and config.yaml from builder
 COPY --from=builder /app/auth-service .
-COPY --from=builder /app/config/config.yaml ./config/config.yaml
 
 # Expose internal app port
 EXPOSE 8080
