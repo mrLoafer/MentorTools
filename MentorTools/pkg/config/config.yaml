@@ -1,6 +1,6 @@
 databases:
   auth_db:
-    host: "localhost"
+    host: "auth-db"
     port: 5432
     user: "auth_user"
     password: "auth_password"

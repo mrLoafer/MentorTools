@@ -1,4 +1,3 @@
-// repository/db.go
 package repository
 
 import (
@@ -9,13 +8,11 @@ import (
 	"log"
 )
 
-var DBPool *pgxpool.Pool
-
-// InitDB initializes a global connection pool to the database.
-func InitDB(ctx context.Context) error {
-	cfg, err := config.LoadConfig("MentorTools/pkg/config/config.yaml")
+// InitDB initializes a connection pool to the database and returns it.
+func InitDB(ctx context.Context) (*pgxpool.Pool, error) {
+	cfg, err := config.LoadConfig("/app/config/config.yaml")
 	if err != nil {
-		return fmt.Errorf("failed to load configuration: %w", err)
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
 	dbConfig := cfg.Databases["auth_db"]
@@ -24,18 +21,17 @@ func InitDB(ctx context.Context) error {
 		dbConfig.User, dbConfig.Password, dbConfig.Host, dbConfig.Port, dbConfig.DBName, dbConfig.SSLMode,
 	)
 
-	DBPool, err = pgxpool.Connect(ctx, databaseURL)
+	pool, err := pgxpool.Connect(ctx, databaseURL)
 	if err != nil {
-		return fmt.Errorf("unable to connect to database: %w", err)
+		return nil, fmt.Errorf("unable to connect to database: %w", err)
 	}
-	log.Println("Connected to auth_db successfully.")
-	return nil
+	return pool, nil
 }
 
-// CloseDB closes the global database pool connection.
-func CloseDB() {
-	if DBPool != nil {
-		DBPool.Close()
+// CloseDB closes the database pool connection.
+func CloseDB(pool *pgxpool.Pool) {
+	if pool != nil {
+		pool.Close()
 		log.Println("Database connection pool closed.")
 	}
 }

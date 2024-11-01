@@ -66,7 +66,7 @@ func GetWordDetailsFromGPT(word string, wordsForExamples []string, topics []stri
 
 	// Формируем запрос, включая только инструкцию и текущее сообщение
 	requestBody := OpenAIRequest{
-		Model:    "gpt-4-turbo",
+		Model:    "gpt-service-4-turbo",
 		Messages: []Message{systemMessage, userMessage}, // Инструкция + текущее сообщение
 	}
 

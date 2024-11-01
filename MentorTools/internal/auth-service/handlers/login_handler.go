@@ -6,10 +6,11 @@ import (
 
 	"MentorTools/internal/auth-service/models"
 	"MentorTools/internal/auth-service/services"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // LoginHandler handles user login and token generation.
-func LoginHandler() http.HandlerFunc {
+func LoginHandler(dbPool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var loginRequest models.UserLoginRequest
 
@@ -23,7 +24,7 @@ func LoginHandler() http.HandlerFunc {
 		ctx := r.Context()
 
 		// Authenticate user using the service layer
-		token, appErr := services.AuthenticateUser(ctx, loginRequest)
+		token, appErr := services.AuthenticateUser(ctx, dbPool, loginRequest)
 		if appErr != nil {
 			// Set response content type and handle error based on AppError code
 			w.Header().Set("Content-Type", "application/json")

@@ -9,6 +9,7 @@ import (
 	"MentorTools/internal/auth-service/models"
 	"MentorTools/internal/auth-service/services"
 	"MentorTools/pkg/common"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // emailRegex is used to validate the format of email addresses.
@@ -20,7 +21,7 @@ func isValidEmail(email string) bool {
 }
 
 // RegisterHandler handles user registration.
-func RegisterHandler() http.HandlerFunc {
+func RegisterHandler(dbPool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var newUser models.UserRegistrationRequest
 
@@ -50,7 +51,7 @@ func RegisterHandler() http.HandlerFunc {
 				Username: newUser.Username,
 			},
 		}
-		appErr := services.RegisterUser(context.Background(), user)
+		appErr := services.RegisterUser(context.Background(), dbPool, user)
 		if appErr != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusConflict)

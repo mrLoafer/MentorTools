@@ -12,15 +12,16 @@ import (
 func main() {
 	ctx := context.Background()
 
-	// Initialize the database connection
-	if err := repository.InitDB(ctx); err != nil {
+	// Initialize the database connection and store it in a local variable
+	dbPool, err := repository.InitDB(ctx)
+	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer repository.CloseDB()
+	defer repository.CloseDB(dbPool)
 
-	// Register and auth routes
-	http.HandleFunc("/register", handlers.RegisterHandler())
-	http.HandleFunc("/login", handlers.LoginHandler())
+	// Register and auth routes with injected dbPool
+	http.HandleFunc("/register", handlers.RegisterHandler(dbPool))
+	http.HandleFunc("/login", handlers.LoginHandler(dbPool))
 
 	// Health check route
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

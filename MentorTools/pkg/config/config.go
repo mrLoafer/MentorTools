@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
+	"os"
 )
 
 type DBConfig struct {
@@ -21,7 +21,7 @@ type Config struct {
 
 // LoadConfig loads the configuration from a YAML file.
 func LoadConfig(filename string) (*Config, error) {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}

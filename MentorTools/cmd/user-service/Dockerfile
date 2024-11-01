@@ -9,11 +9,10 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the config.yaml file
-COPY MentorTools/pkg/config/config.yaml /app/config/config.yaml
-
-# Копируем весь исходный код
-COPY . .
+# Copy source code
+COPY cmd/user-service ./cmd/user-service
+COPY internal/user-service ./internal/user-service
+COPY pkg ./pkg
 
 # Собираем бинарный файл
 RUN go build -o user-service ./cmd/user-service/main.go

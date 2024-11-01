@@ -22,6 +22,7 @@ WORKDIR /app
 
 # Copy binary and config.yaml from builder
 COPY --from=builder /app/auth-service .
+COPY --from=builder /app/pkg/config/config.yaml ./config/config.yaml
 
 # Expose internal app port
 EXPOSE 8080

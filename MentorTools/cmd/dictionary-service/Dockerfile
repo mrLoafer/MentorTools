@@ -1,4 +1,4 @@
-# cmd/dictionary-service/Dockerfile
+# cmd/dictionary-service-service/Dockerfile
 
 # Stage 1: Build the application
 FROM golang:1.20-alpine AS builder
@@ -9,13 +9,12 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the config.yaml file
-COPY MentorTools/pkg/config/config.yaml /app/config/config.yaml
+# Copy source code
+COPY cmd/dictionary-service ./cmd/dictionary-service
+COPY internal/dictionary-service ./internal/dictionary-service
+COPY pkg ./pkg
 
-# Копируем весь исходный код
-COPY . .
-
-# Собираем бинарный файл
+# Build the binary
 RUN go build -o dictionary-service ./cmd/dictionary-service/main.go
 
 # Stage 2: Run the application

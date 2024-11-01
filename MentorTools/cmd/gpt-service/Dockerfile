@@ -1,4 +1,4 @@
-# cmd/gpt-service/Dockerfile
+# cmd/gpt-service-service/Dockerfile
 
 # Stage 1: Build the application
 FROM golang:1.20-alpine AS builder
@@ -9,13 +9,12 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Копируем весь исходный код
-COPY . .
+# Copy source code
+COPY cmd/gpt-service ./cmd/gpt-service
+COPY internal/gpt-service ./internal/gpt-service
+COPY pkg ./pkg
 
-# Copy the config.yaml file
-COPY MentorTools/pkg/config/config.yaml /app/config/config.yaml
-
-# Собираем бинарный файл
+# Build the binary
 RUN go build -o gpt-service ./cmd/gpt-service/main.go
 
 # Stage 2: Run the application
