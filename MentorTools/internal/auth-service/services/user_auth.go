@@ -1,43 +1,51 @@
 package services
 
 import (
-	"context"
-
 	"MentorTools/internal/auth-service/models"
 	"MentorTools/pkg/common"
-	"github.com/jackc/pgx/v4"
+	"context"
+	"fmt"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // AuthenticateUser authenticates the user by checking credentials and returning a JWT token if successful.
-func AuthenticateUser(ctx context.Context, dbPool *pgxpool.Pool, loginRequest models.UserLoginRequest) (string, *common.AppError) {
-	var user models.User
+func AuthenticateUser(ctx context.Context, dbPool *pgxpool.Pool, loginRequest models.UserLoginRequest) *common.Response {
+	var code, message, email, passwordHash, roleName string
+	var userID int
 
-	// Получаем данные пользователя по email
-	err := dbPool.QueryRow(ctx, "SELECT * FROM fnfinduserbyemail($1)", loginRequest.Email).
-		Scan(&user.ID, &user.Email, &user.Password, &user.Role, &user.Username)
+	fmt.Println("Health check of log in service")
+	// Execute the function fn_find_user_by_email and retrieve response fields
+	err := dbPool.QueryRow(ctx, `SELECT code, message, user_id, email, password_hash, role_name
+									  FROM fn_find_user_by_email($1)`, loginRequest.Email).
+		Scan(&code, &message, &userID, &email, &passwordHash, &roleName)
+
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			return "", common.NewAppError("AUTH0003", "User not found")
-		}
-		return "", common.NewAppError("AUTH500", "Database error")
+		return common.NewErrorResponse("AUTH500", "Database error: "+err.Error())
 	}
 
-	// Проверяем пароль пользователя
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginRequest.Password)); err != nil {
-		return "", common.NewAppError("AUTH0004", "Invalid password")
+	// Check if the stored procedure returned a user not found error
+	if code == "AUTH0005" {
+		return common.NewErrorResponse(code, message)
 	}
 
-	// Генерируем JWT токен
-	token, appErr := GenerateJWT(models.JwtData{
-		ID:    user.ID,
-		Email: user.Email,
-		Role:  user.Role,
+	// Verify the user`s password
+	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(loginRequest.Password)); err != nil {
+		return common.NewErrorResponse("AUTH0004", "Invalid password")
+	}
+
+	// Generate JWT token
+	tokenResponse := GenerateJWT(models.JwtData{
+		ID:    userID,
+		Email: email,
+		Role:  roleName,
 	})
-	if appErr != nil {
-		return "", appErr
+
+	// Check if token generation was successful or an error occurred
+	if tokenResponse.Code != "SUCCESS" {
+		return tokenResponse // Return the error response directly
 	}
 
-	return token, nil
+	// Return success response with the generated token
+	return common.NewSuccessResponse("User authenticated successfully", tokenResponse.Data)
 }

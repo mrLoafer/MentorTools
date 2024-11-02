@@ -6,24 +6,38 @@ import (
 	"context"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"golang.org/x/crypto/bcrypt"
-	"strings"
 )
 
-// RegisterUser hashes the password and inserts a new user into the database.
-func RegisterUser(ctx context.Context, dbPool *pgxpool.Pool, user models.User) *common.AppError {
-	// Хэшируем пароль
+// RegisterUser hashes the password and attempts to insert a new user into the database.
+func RegisterUser(ctx context.Context, dbPool *pgxpool.Pool, user models.User) *common.Response {
+	// Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return common.NewAppError("AUTH500", "Error hashing password")
+		return common.NewErrorResponse("AUTH500", "Error hashing password")
 	}
 
-	// Выполняем SQL-запрос для создания пользователя
-	_, err = dbPool.Exec(ctx, "CALL fnCreateUser($1, $2, $3, $4)", user.Username, hashedPassword, user.Email, user.Role)
+	// Variables to hold the result of the function call
+	var code, message string
+
+	// Call the fn_create_user function to attempt user creation
+	err = dbPool.QueryRow(
+		ctx,
+		"SELECT code, message FROM fn_create_user($1, $2, $3, $4)",
+		user.Username, string(hashedPassword), user.Email, user.Role,
+	).Scan(&code, &message)
+
 	if err != nil {
-		if strings.Contains(err.Error(), "AUTH0001") {
-			return common.NewAppError("AUTH0001", "User with the same email already exists")
-		}
-		return common.NewAppError("AUTH500", "Database error")
+		return common.NewErrorResponse("AUTH500", "Database error")
 	}
-	return nil
+
+	// Check the returned code to determine success or specific error
+	if code != "SUCCESS" {
+		return common.NewErrorResponse(code, message)
+	}
+
+	// Return a success response with optional data
+	return common.NewSuccessResponse("User created successfully", map[string]interface{}{
+		"username": user.Username,
+		"email":    user.Email,
+	})
 }

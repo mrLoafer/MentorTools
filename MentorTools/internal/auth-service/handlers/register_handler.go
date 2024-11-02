@@ -1,24 +1,14 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
-	"net/http"
-	"regexp"
-
 	"MentorTools/internal/auth-service/models"
 	"MentorTools/internal/auth-service/services"
 	"MentorTools/pkg/common"
+	"context"
+	"encoding/json"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"net/http"
 )
-
-// emailRegex is used to validate the format of email addresses.
-var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-
-// isValidEmail checks if the provided email is in a valid format.
-func isValidEmail(email string) bool {
-	return emailRegex.MatchString(email)
-}
 
 // RegisterHandler handles user registration.
 func RegisterHandler(dbPool *pgxpool.Pool) http.HandlerFunc {
@@ -27,18 +17,28 @@ func RegisterHandler(dbPool *pgxpool.Pool) http.HandlerFunc {
 
 		// Decode registration data
 		if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
-			http.Error(w, "Invalid request payload", http.StatusBadRequest)
+			response := common.NewErrorResponse("AUTH400", "Invalid request payload")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		// Check if required fields are empty
+		if newUser.Email == "" || newUser.Password == "" || newUser.Role == "" || newUser.Username == "" {
+			response := common.NewErrorResponse("AUTH400", "Missing required fields")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 
 		// Validate email format
-		if !isValidEmail(newUser.Email) {
-			appErr := common.NewAppError("AUTH0002", "Invalid email format")
+		if !common.IsValidEmail(newUser.Email) {
+			response := common.NewErrorResponse("AUTH0002", "Invalid email format")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			if err := json.NewEncoder(w).Encode(appErr); err != nil {
-				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-			}
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 
@@ -53,19 +53,17 @@ func RegisterHandler(dbPool *pgxpool.Pool) http.HandlerFunc {
 		}
 		appErr := services.RegisterUser(context.Background(), dbPool, user)
 		if appErr != nil {
+			response := common.NewErrorResponse(appErr.Code, appErr.Message)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusConflict)
-			if err := json.NewEncoder(w).Encode(appErr); err != nil {
-				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-			}
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 
 		// Respond with a success message
+		response := common.NewSuccessResponse("User registered successfully", nil)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		if err := json.NewEncoder(w).Encode(map[string]string{"message": "User registered successfully"}); err != nil {
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		}
+		json.NewEncoder(w).Encode(response)
 	}
 }

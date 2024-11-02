@@ -28,8 +28,8 @@ Project                      # Root directory of the project
 │   │   │       ├── create-table-roles.sql    # SQL script to create roles table
 │   │   │       ├── create-table-users.sql    # SQL script to create users table
 │   │   │       ├── db.go     # Database connection and operations
-│   │   │       ├── fnCreateUser.sql  # SQL function to create a user
-│   │   │       ├── fnFindUserByEmail.sql # SQL function to find a user by email
+│   │   │       ├── fn_create_user.sql  # SQL function to create a user
+│   │   │       ├── fn_find_user_by_email.sql # SQL function to find a user by email
 │   │   │       └── initial-data-roles.sql # SQL script for initial role data
 │   │   ├── dictionary-service # Folder for dictionary service implementation
 │   │   │   ├── handlers     # HTTP handlers for dictionary-service
@@ -58,3 +58,6 @@ Project                      # Root directory of the project
 ├── docker-compose.yml       # Docker Compose configuration file for orchestrating services
 ├── go.mod                   # Go module dependencies
 └── project_structure.txt    # Text file documenting the project's structure
+
+
+идентификатор моего приватного ключа 4qn4vdn2dkrg35ok36ot99pyn

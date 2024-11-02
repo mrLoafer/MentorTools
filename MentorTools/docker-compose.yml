@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.9
+    command:
+      - "--api=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"   # HTTP
+      - "8080:8080"  # Traefik Dashboard
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+      - "./.htpasswd:/etc/traefik/.htpasswd"
+    networks:
+      - traefik-net
+
+  auth-service:
+    image: mentor-tools/auth-service:latest
+    build:
+      context: .
+      dockerfile: cmd/auth-service/Dockerfile
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth-service.rule=Host(`auth.localhost`)"
+      - "traefik.http.routers.auth-service.entrypoints=web"
+      - "traefik.http.services.auth-service.loadbalancer.server.port=8080"
+    volumes:
+      - ./pkg/config/config.yaml:/app/config/config.yaml
+      - ./private_key.pem:/app/private_key.pem # Подключение приватного ключа
+    environment:
+      - JWT_PRIVATE_KEY_PATH=/app/private_key.pem
+    depends_on:
+      - auth-db
+    networks:
+      - traefik-net
+
+  user-service:
+    image: mentor-tools/user-service:latest
+    build:
+      context: .
+      dockerfile: cmd/user-service/Dockerfile
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.user-service.rule=Host(`user.localhost`)"
+      - "traefik.http.routers.user-service.entrypoints=web"
+      - "traefik.http.services.user-service.loadbalancer.server.port=8080"
+    depends_on:
+      - auth-db
+    networks:
+      - traefik-net
+
+  auth-db:
+    image: postgres:13-alpine
+    environment:
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_password
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+      - ./scripts/init-auth-db.sql:/docker-entrypoint-initdb.d/init-auth-db.sql
+    networks:
+      - traefik-net
+
+  fe:
+    image: mentor-tools/fe:latest
+    build:
+      context: ./fe
+      dockerfile: Dockerfile
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fe.rule=Host(`fe.localhost`)"
+      - "traefik.http.routers.fe.entrypoints=web"
+      - "traefik.http.services.fe.loadbalancer.server.port=80"
+    networks:
+      - traefik-net
+
+networks:
+  traefik-net:
+    driver: bridge
+
+volumes:
+  auth-db-data:
+    driver: local
+  dictionary-db-data:
+    driver: local

@@ -6,6 +6,7 @@ import (
 
 	"MentorTools/internal/auth-service/models"
 	"MentorTools/internal/auth-service/services"
+	"MentorTools/pkg/common"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -16,7 +17,28 @@ func LoginHandler(dbPool *pgxpool.Pool) http.HandlerFunc {
 
 		// Decode login data
 		if err := json.NewDecoder(r.Body).Decode(&loginRequest); err != nil {
-			http.Error(w, "Invalid request payload", http.StatusBadRequest)
+			response := common.NewErrorResponse("AUTH400", "Invalid request payload")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		// Check if required fields are empty
+		if loginRequest.Email == "" || loginRequest.Password == "" {
+			response := common.NewErrorResponse("AUTH400", "Missing required fields")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		// Validate email format
+		if !common.IsValidEmail(loginRequest.Email) {
+			response := common.NewErrorResponse("AUTH0002", "Invalid email format")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 
@@ -24,31 +46,25 @@ func LoginHandler(dbPool *pgxpool.Pool) http.HandlerFunc {
 		ctx := r.Context()
 
 		// Authenticate user using the service layer
-		token, appErr := services.AuthenticateUser(ctx, dbPool, loginRequest)
-		if appErr != nil {
-			// Set response content type and handle error based on AppError code
-			w.Header().Set("Content-Type", "application/json")
+		response := services.AuthenticateUser(ctx, dbPool, loginRequest)
 
-			switch appErr.Code {
-			case "AUTH0003": // User not found
-				w.WriteHeader(http.StatusNotFound)
-			case "AUTH0004": // Invalid password
-				w.WriteHeader(http.StatusUnauthorized)
-			default: // General internal error
-				w.WriteHeader(http.StatusInternalServerError)
-			}
+		// Set response content type
+		w.Header().Set("Content-Type", "application/json")
 
-			// Encode and send the error response
-			if err := json.NewEncoder(w).Encode(appErr); err != nil {
-				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-			}
-			return
+		// Check response code and set appropriate HTTP status
+		switch response.Code {
+		case "AUTH0005": // User not found
+			w.WriteHeader(http.StatusNotFound)
+		case "AUTH0004": // Invalid password
+			w.WriteHeader(http.StatusUnauthorized)
+		case "SUCCESS":
+			w.WriteHeader(http.StatusOK)
+		default: // General internal error
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 
-		// Respond with the generated token on successful login
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(map[string]string{"token": token}); err != nil {
+		// Encode and send the response
+		if err := json.NewEncoder(w).Encode(response); err != nil {
 			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		}
 	}

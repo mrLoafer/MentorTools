@@ -12,6 +12,9 @@ COPY cmd/auth-service ./cmd/auth-service
 COPY internal/auth-service ./internal/auth-service
 COPY pkg ./pkg
 
+ARG JWT_PRIVATE_KEY
+ENV JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
+
 # Build the binary
 RUN go build -o auth-service ./cmd/auth-service/main.go
 

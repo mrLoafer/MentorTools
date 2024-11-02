@@ -1,6 +1,6 @@
 package models
 
-import "github.com/dgrijalva/jwt-go"
+import "github.com/golang-jwt/jwt/v4"
 
 // UserBase содержит общие поля, используемые в других моделях пользователя.
 type UserBase struct {
@@ -32,5 +32,5 @@ type JwtData struct {
 	ID    int    `json:"userId"`
 	Email string `json:"email"`
 	Role  string `json:"role"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
