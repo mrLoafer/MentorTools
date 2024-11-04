@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"MentorTools/internal/auth-service/models"
@@ -44,7 +45,7 @@ func LoginHandler(dbPool *pgxpool.Pool) http.HandlerFunc {
 
 		// Create a context with request's context
 		ctx := r.Context()
-
+		fmt.Println("Health check of handler")
 		// Authenticate user using the service layer
 		response := services.AuthenticateUser(ctx, dbPool, loginRequest)
 

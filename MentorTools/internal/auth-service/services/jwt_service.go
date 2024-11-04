@@ -20,28 +20,37 @@ func GenerateJWT(user models.JwtData) *common.Response {
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	}
 
-	// Read the private key from the Docker secret file path
-	privateKeyPath := os.Getenv("JWT_PRIVATE_KEY_PATH")
+	fmt.Printf("user.RegisteredClaims: %v\n", user.RegisteredClaims)
+	// Путь к файлу с приватным ключом
+	privateKeyPath := "/app/private_key.pem"
+
+	fmt.Printf("Private key privateKeyPath: %v\n", privateKeyPath)
+
+	// Чтение приватного ключа из файла
 	privateKey, err := os.ReadFile(privateKeyPath)
 	if err != nil {
-		return common.NewErrorResponse("AUTH500", "Failed to read private key from Docker secret: "+err.Error())
+		fmt.Printf("Error reading private key: %v\n", err)
+		return common.NewErrorResponse("AUTH500", "Failed to read private key: "+err.Error())
 	}
 
-	// Parse the private key
+	// Логирование длины ключа для проверки чтения
+	fmt.Printf("Private key length: %d\n", len(privateKey))
+
+	// Парсинг приватного ключа
 	key, err := jwt.ParseRSAPrivateKeyFromPEM(privateKey)
 	if err != nil {
 		return common.NewErrorResponse("AUTH500", fmt.Sprintf("Could not parse private key: %v", err))
 	}
 
-	// Create a new token with RS256 signing method and the provided claims
+	// Создание нового токена с методом подписи RS256 и указанными claims
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, user)
 
-	// Sign the token with the private key
+	// Подпись токена с использованием приватного ключа
 	tokenString, err := token.SignedString(key)
 	if err != nil {
 		return common.NewErrorResponse("AUTH500", fmt.Sprintf("Could not sign token: %v", err))
 	}
 
-	// Return a success response with the token
+	// Возврат успешного ответа с токеном
 	return common.NewSuccessResponse("Token generated successfully", tokenString)
 }

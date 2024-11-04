@@ -2,90 +2,51 @@ version: '3.8'
 
 services:
   traefik:
-    image: traefik:v2.9
+    image: traefik:v2.9  # Используем актуальную версию Traefik
     command:
-      - "--api=true"
-      - "--api.dashboard=true"
+      - "--api.insecure=true"  # Включает панель Traefik для мониторинга (опционально, для локальной разработки)
       - "--providers.docker=true"
-      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.address=:80"  # Входной порт для HTTP
     ports:
-      - "80:80"   # HTTP
-      - "8080:8080"  # Traefik Dashboard
+      - "80:80"  # Основной HTTP порт для входящих запросов
+      - "8080:8080"  # Панель мониторинга (опционально)
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "./letsencrypt:/letsencrypt"
-      - "./.htpasswd:/etc/traefik/.htpasswd"
-    networks:
-      - traefik-net
+      - /var/run/docker.sock:/var/run/docker.sock  # Для интеграции с Docker
 
   auth-service:
-    image: mentor-tools/auth-service:latest
     build:
       context: .
       dockerfile: cmd/auth-service/Dockerfile
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.auth-service.rule=Host(`auth.localhost`)"
-      - "traefik.http.routers.auth-service.entrypoints=web"
-      - "traefik.http.services.auth-service.loadbalancer.server.port=8080"
+      - "traefik.http.routers.auth-service.rule=Host(`auth.localhost`)"  # Правило маршрутизации на основе доменного имени
+      - "traefik.http.services.auth-service.loadbalancer.server.port=8080"  # Внутренний порт сервиса
+    depends_on:
+      - auth-db
     volumes:
-      - ./pkg/config/config.yaml:/app/config/config.yaml
-      - ./private_key.pem:/app/private_key.pem # Подключение приватного ключа
-    environment:
-      - JWT_PRIVATE_KEY_PATH=/app/private_key.pem
-    depends_on:
-      - auth-db
-    networks:
-      - traefik-net
-
-  user-service:
-    image: mentor-tools/user-service:latest
-    build:
-      context: .
-      dockerfile: cmd/user-service/Dockerfile
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.user-service.rule=Host(`user.localhost`)"
-      - "traefik.http.routers.user-service.entrypoints=web"
-      - "traefik.http.services.user-service.loadbalancer.server.port=8080"
-    depends_on:
-      - auth-db
-    networks:
-      - traefik-net
+      - ./private_key.pem:/app/private_key.pem  # Монтирование private_key.pem
+      - ./pkg/config/config.yaml:/app/config/config.yaml  # Монтирование config.yaml
+    restart: on-failure
 
   auth-db:
-    image: postgres:13-alpine
+    image: postgres:latest
     environment:
-      POSTGRES_USER: auth_user
-      POSTGRES_PASSWORD: auth_password
-      POSTGRES_DB: auth_db
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - "5432:5432"
+      - "5432:5432"  # Публикация порта базы данных
     volumes:
-      - auth-db-data:/var/lib/postgresql/data
+      - auth-db-data:/var/lib/postgresql/data  # Сохранение данных базы
       - ./scripts/init-auth-db.sql:/docker-entrypoint-initdb.d/init-auth-db.sql
-    networks:
-      - traefik-net
 
-  fe:
-    image: mentor-tools/fe:latest
-    build:
-      context: ./fe
-      dockerfile: Dockerfile
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.fe.rule=Host(`fe.localhost`)"
-      - "traefik.http.routers.fe.entrypoints=web"
-      - "traefik.http.services.fe.loadbalancer.server.port=80"
-    networks:
-      - traefik-net
-
-networks:
-  traefik-net:
-    driver: bridge
+  swagger:
+    image: swaggerapi/swagger-ui
+    ports:
+      - "8079:8080"  # Используйте порт 8079 на хосте и 8080 в контейнере Swagger UI
+    environment:
+      - SWAGGER_JSON=/mnt/auth-service.yaml
+    volumes:
+      - ./api/auth-service.yaml:/mnt/auth-service.yaml  # Убедитесь, что путь к файлу совпадает
 
 volumes:
   auth-db-data:
-    driver: local
-  dictionary-db-data:
     driver: local

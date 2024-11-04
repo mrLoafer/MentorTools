@@ -1,29 +1,38 @@
 CREATE OR REPLACE FUNCTION public.fn_find_user_by_email(p_email VARCHAR)
-    RETURNS RECORD
+    RETURNS TABLE (
+                      code VARCHAR,
+                      message VARCHAR,
+                      user_id INT,
+                      email VARCHAR,
+                      password_hash VARCHAR,
+                      role_name VARCHAR
+                  )
     LANGUAGE plpgsql
 AS $$
-DECLARE
-    result RECORD;
 BEGIN
     -- Check if user with the specified email exists
-    SELECT
-        'SUCCESS' AS code,
-        'User found' AS message,
-        u.id AS user_id,
-        u.email,
-        u.password_hash,
-        r.role_name
-    INTO result
-    FROM users u
-             LEFT JOIN roles r ON r.id = u.role_id
-    WHERE u.email = p_email;
+    RETURN QUERY
+        SELECT
+            'SUCCESS'::VARCHAR AS code,
+            'User found'::VARCHAR AS message,
+            u.id::INT AS user_id,
+            u.email::VARCHAR AS email,
+            u.password_hash::VARCHAR AS password_hash,
+            r.role_name::VARCHAR AS role_name
+        FROM users u
+                 LEFT JOIN roles r ON r.id = u.role_id
+        WHERE u.email = p_email;
 
-    -- If user is not found, set custom error response
+    -- If user is not found, return custom error response
     IF NOT FOUND THEN
-        result := (SELECT 'AUTH0005' AS code, 'User not found' AS message, NULL, NULL, NULL, NULL);
+        RETURN QUERY SELECT
+                         'AUTH0005'::VARCHAR AS code,
+                         'User not found'::VARCHAR AS message,
+                         NULL::INT AS user_id,
+                         NULL::VARCHAR AS email,
+                         NULL::VARCHAR AS password_hash,
+                         NULL::VARCHAR AS role_name;
     END IF;
-
-    RETURN result;
 END;
 $$;
 

@@ -12,9 +12,6 @@ COPY cmd/auth-service ./cmd/auth-service
 COPY internal/auth-service ./internal/auth-service
 COPY pkg ./pkg
 
-ARG JWT_PRIVATE_KEY
-ENV JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
-
 # Build the binary
 RUN go build -o auth-service ./cmd/auth-service/main.go
 
@@ -28,7 +25,7 @@ COPY --from=builder /app/auth-service .
 COPY --from=builder /app/pkg/config/config.yaml ./config/config.yaml
 
 # Expose internal app port
-EXPOSE 8080
+EXPOSE 8081
 
 # Run the app
 CMD ["./auth-service"]
