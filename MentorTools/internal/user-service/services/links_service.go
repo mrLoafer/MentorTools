@@ -1,48 +1,54 @@
 package services
 
 import (
-	"MentorTools/internal/auth-service/models"
+	"MentorTools/internal/user-service/models"
 	"MentorTools/pkg/common"
 	"context"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-// Функция для получения информации об учителе
-func GetTeacherInfo(ctx context.Context, claims jwt.MapClaims) (models.User, *common.Response) {
-	studentID := int(claims["userId"].(float64))
+// GetStudents retrieves the list of students linked to a specific teacher.
+func GetStudents(ctx context.Context, dbPool *pgxpool.Pool, teacherID int) ([]models.Student, *common.Response) {
+	var students []models.Student
 
-	teacherInfo, err := getTeacherFromDB(ctx, studentID)
+	// Call the database procedure to get students linked to the teacher
+	rows, err := dbPool.Query(ctx, "SELECT * FROM fn_get_students_by_teacher($1)", teacherID)
 	if err != nil {
-		return models.User{}, common.NewErrorResponse("TEACHER_NOT_FOUND", "Teacher not found")
+		return nil, common.NewErrorResponse("DB500", "Database error occurred while retrieving students")
+	}
+	defer rows.Close()
+
+	// Scan each row into the Student model
+	for rows.Next() {
+		var student models.Student
+		if err := rows.Scan(&student.ID, &student.Name, &student.Email); err != nil {
+			return nil, common.NewErrorResponse("DB500", "Failed to scan student data")
+		}
+		students = append(students, student)
 	}
 
-	return teacherInfo, nil
-}
-
-// Функция для получения списка учеников
-func GetStudents(ctx context.Context, claims jwt.MapClaims) ([]models.User, *common.Response) {
-	teacherID := int(claims["userId"].(float64))
-
-	students, err := getStudentsFromDB(ctx, teacherID)
-	if err != nil {
-		return nil, common.NewErrorResponse("STUDENTS_NOT_FOUND", "No students found")
+	// Check for errors after row iteration
+	if rows.Err() != nil {
+		return nil, common.NewErrorResponse("DB500", "Error while reading students data")
 	}
 
 	return students, nil
 }
 
-// Функция для создания связи с учеником по email
-func CreateLink(ctx context.Context, claims jwt.MapClaims, studentEmail string) *common.Response {
-	teacherID := int(claims["userId"].(float64))
+// CreateLink establishes a link between a teacher and a student based on the student's email.
+func CreateLink(ctx context.Context, dbPool *pgxpool.Pool, teacherID int, studentEmail string) *common.Response {
+	var code, message string
 
-	// Валидация роли учителя и существования студента
-	studentID, err := getStudentIDByEmail(ctx, studentEmail)
+	// Call the database procedure to create a link
+	err := dbPool.QueryRow(ctx, "SELECT code, message FROM fn_create_link($1, $2)", teacherID, studentEmail).Scan(&code, &message)
 	if err != nil {
-		return common.NewErrorResponse("STUDENT_NOT_FOUND", "Student not found")
+		return common.NewErrorResponse("DB500", "Database error occurred while creating link")
 	}
 
-	if err := createLinkInDB(ctx, teacherID, studentID); err != nil {
-		return common.NewErrorResponse("LINK_CREATION_FAILED", "Failed to create link")
+	// Check the result from the database procedure and return appropriate response
+	if code != "SUCCESS" {
+		return common.NewErrorResponse(code, message)
 	}
 
-	return nil
+	return common.NewSuccessResponse("Link created successfully", nil)
 }

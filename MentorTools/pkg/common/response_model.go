@@ -1,5 +1,10 @@
 package common
 
+import (
+	"encoding/json"
+	"net/http"
+)
+
 // Response represents a standardized response model with code, message, and optional data.
 type Response struct {
 	Code    string      `json:"code"`
@@ -22,4 +27,11 @@ func NewSuccessResponse(message string, data interface{}) *Response {
 		Message: message,
 		Data:    data,
 	}
+}
+
+// JSONResponse sends a JSON response with the given status code and data.
+func JSONResponse(w http.ResponseWriter, statusCode int, response *Response) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(response)
 }

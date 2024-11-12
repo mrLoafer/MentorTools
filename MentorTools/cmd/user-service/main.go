@@ -21,9 +21,8 @@ func main() {
 	defer repository.CloseDB(dbPool)
 
 	// Setting up routes with middleware for authorization
-	http.Handle("/dashboard", middleware.AuthMiddleware(handlers.DashboardHandler))
+	http.Handle("/dashboard", middleware.AuthMiddleware(handlers.DashboardHandler()))
 	http.Handle("/profile", middleware.AuthMiddleware(handlers.UpdateUserProfileHandler(dbPool)))
-	http.Handle("/teacher", middleware.AuthMiddleware(handlers.GetTeacherInfoHandler(dbPool)))
 	http.Handle("/students", middleware.AuthMiddleware(handlers.GetStudentsHandler(dbPool)))
 	http.Handle("/link", middleware.AuthMiddleware(handlers.CreateLinkHandler(dbPool)))
 
