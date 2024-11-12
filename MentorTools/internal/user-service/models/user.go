@@ -1,14 +1,16 @@
 package models
 
 type User struct {
-	ID       string `json:"id"`
+	ID       int    `json:"id"`
+	Username string `json:"username"`
 	Email    string `json:"email"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
 	Role     string `json:"role"`
 }
 
-type Credentials struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+type UserUpdateRequest struct {
+	Username string `json:"username"`
+}
+
+type UserLinkRequest struct {
+	Email string `json:"email"`
 }

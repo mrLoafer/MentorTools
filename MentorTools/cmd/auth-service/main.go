@@ -25,7 +25,7 @@ func main() {
 
 	// Health check route
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "Service is running")
+		fmt.Fprintln(w, "Auth-service is running")
 	})
 
 	// Start the server

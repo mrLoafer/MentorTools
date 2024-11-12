@@ -1,32 +1,37 @@
 package repository
 
 import (
+	"MentorTools/pkg/config"
 	"context"
-	"log"
-	"os"
-
+	"fmt"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"log"
 )
 
-// ConnectDB establishes a connection pool to the PostgreSQL database.
-func ConnectDB() *pgxpool.Pool {
-	// Get the database URL from environment variables or use a default one
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		databaseURL = "postgres://loafer:Tesla846@localhost:5432/mentor_tools?sslmode=disable"
+// InitDB initializes a connection pool to the database and returns it.
+func InitDB(ctx context.Context) (*pgxpool.Pool, error) {
+	cfg, err := config.LoadConfig("/app/config/config.yaml")
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	// Configure and connect to the pool
-	pool, err := pgxpool.Connect(context.Background(), databaseURL)
+	dbConfig := cfg.Databases["auth_db"]
+	databaseURL := fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		dbConfig.User, dbConfig.Password, dbConfig.Host, dbConfig.Port, dbConfig.DBName, dbConfig.SSLMode,
+	)
+
+	pool, err := pgxpool.Connect(ctx, databaseURL)
 	if err != nil {
-		log.Fatalf("Unable to connect to database: %v\n", err)
+		return nil, fmt.Errorf("unable to connect to database: %w", err)
 	}
-	log.Println("Connected to the database successfully.")
-	return pool
+	return pool, nil
 }
 
 // CloseDB closes the database pool connection.
 func CloseDB(pool *pgxpool.Pool) {
-	pool.Close()
-	log.Println("Database connection pool closed.")
+	if pool != nil {
+		pool.Close()
+		log.Println("Database connection pool closed.")
+	}
 }

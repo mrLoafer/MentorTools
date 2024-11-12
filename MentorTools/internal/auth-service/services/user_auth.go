@@ -12,14 +12,14 @@ import (
 // AuthenticateUser authenticates the user by checking credentials and returning a JWT token if successful.
 func AuthenticateUser(ctx context.Context, dbPool *pgxpool.Pool, loginRequest models.UserLoginRequest) *common.Response {
 	var code, message string
-	var email, passwordHash, roleName *string
+	var email, passwordHash, roleName, userName *string
 	var userID *int
 
 	fmt.Println("Health check of logINN service")
 	// Execute the function fn_find_user_by_email and retrieve response fields
-	err := dbPool.QueryRow(ctx, `SELECT code, message, user_id, email, password_hash, role_name
+	err := dbPool.QueryRow(ctx, `SELECT code, message, user_id, user_name, email, password_hash, role_name
 									  FROM fn_find_user_by_email($1)`, loginRequest.Email).
-		Scan(&code, &message, &userID, &email, &passwordHash, &roleName)
+		Scan(&code, &message, &userID, &userName, &email, &passwordHash, &roleName)
 
 	fmt.Printf("response frome DB: code - %v, msg - %v\n", code, message)
 	if err != nil {
@@ -42,6 +42,7 @@ func AuthenticateUser(ctx context.Context, dbPool *pgxpool.Pool, loginRequest mo
 		ID:    *userID,
 		Email: *email,
 		Role:  *roleName,
+		Name:  *userName,
 	})
 
 	// Check if token generation was successful or an error occurred

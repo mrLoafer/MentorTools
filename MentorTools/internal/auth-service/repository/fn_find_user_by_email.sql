@@ -3,6 +3,7 @@ CREATE OR REPLACE FUNCTION public.fn_find_user_by_email(p_email VARCHAR)
                       code VARCHAR,
                       message VARCHAR,
                       user_id INT,
+                      user_name VARCHAR,
                       email VARCHAR,
                       password_hash VARCHAR,
                       role_name VARCHAR
@@ -16,6 +17,7 @@ BEGIN
             'SUCCESS'::VARCHAR AS code,
             'User found'::VARCHAR AS message,
             u.id::INT AS user_id,
+            u.username::VARCHAR AS user_name,
             u.email::VARCHAR AS email,
             u.password_hash::VARCHAR AS password_hash,
             r.role_name::VARCHAR AS role_name
@@ -29,6 +31,7 @@ BEGIN
                          'AUTH0005'::VARCHAR AS code,
                          'User not found'::VARCHAR AS message,
                          NULL::INT AS user_id,
+                         NULL::VARCHAR as user_name,
                          NULL::VARCHAR AS email,
                          NULL::VARCHAR AS password_hash,
                          NULL::VARCHAR AS role_name;

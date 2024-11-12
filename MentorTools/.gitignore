@@ -1,3 +1,60 @@
-# Ignore private and public keys
-private_key.pem
-public_key.pem
+# Ignore OS generated files
+.DS_Store
+Thumbs.db
+
+# Ignore build artifacts
+/build/
+bin/
+dist/
+
+# Ignore dependencies
+/vendor/
+node_modules/
+
+# Ignore configuration files with sensitive data
+*.pem
+.htpasswd
+*.key
+*.crt
+*.p12
+
+# Ignore application logs
+/logs/
+*.log
+
+# Ignore Docker-specific files
+*.env
+docker-compose.override.yml
+
+# Ignore IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Ignore compiled files and binary outputs
+*.exe
+*.out
+*.dll
+*.so
+*.dylib
+
+# Ignore coverage and testing files
+coverage/
+*.test
+
+# Ignore Go specific files
+go.sum
+
+# Ignore frontend build outputs
+fe/node_modules/
+fe/dist/
+fe/.cache/
+fe/build/
+
+# Ignore certificate and secrets in letsencrypt folder
+letsencrypt/*.pem
+letsencrypt/*.key
+
+# Ignore any scripts output files
+scripts/*.log

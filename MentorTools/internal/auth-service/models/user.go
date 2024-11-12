@@ -32,5 +32,6 @@ type JwtData struct {
 	ID    int    `json:"userId"`
 	Email string `json:"email"`
 	Role  string `json:"role"`
+	Name  string `json:"name"`
 	jwt.RegisteredClaims
 }
